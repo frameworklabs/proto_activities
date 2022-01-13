@@ -6,7 +6,7 @@
 /* Includes */
 
 #include <stdbool.h>
-#include <stdlib.h> // for uint16_t
+#include <stdint.h> // for uint16_t
 #include <string.h> // for memset
 
 /* Types */
@@ -40,7 +40,7 @@ typedef int8_t pa_rc_t;
         pa_pc_t _pa_pc; \
         ctx; \
     }; \
-    pa_rc_t nm(_pa_frame_type(nm)* self, ##__VA_ARGS__) { \
+    static pa_rc_t nm(_pa_frame_type(nm)* self, ##__VA_ARGS__) { \
         switch (self->_pa_pc) { \
             case 0:
 

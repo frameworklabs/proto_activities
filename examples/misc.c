@@ -10,7 +10,7 @@
 /* Helper functions */
 
 static char* int_to_str(uint16_t val) {
-    static char buf[64];
+    static char buf[8];
     snprintf(buf, sizeof(buf), "%u", val);
     return buf;
 }
@@ -19,6 +19,7 @@ static char* int_to_str(uint16_t val) {
 
 pa_activity (Counter, pa_ctx(uint16_t i), uint16_t n, const char* prefix) {
     assert(self->i == 0);
+    
     self->i = n;
     while (self->i-- > 0) {
         pa_await (true);
@@ -28,6 +29,7 @@ pa_activity (Counter, pa_ctx(uint16_t i), uint16_t n, const char* prefix) {
 
 pa_activity (Generator, pa_ctx(uint16_t i), uint16_t* valp) {
     assert(self->i == 0);
+    
     self->i = 0;
     while (true) {
         *valp = self->i++;
