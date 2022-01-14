@@ -70,6 +70,12 @@ pa_activity (Main, pa_ctx(pa_codef(4); uint16_t i;
         pa_with_as (Counter, Counter_1, 5, "B");
     } pa_coend;
     
+    printf("Concurrent weak only\n");
+    pa_cobegin(2) {
+        pa_with_weak (Counter, 10, "A");
+        pa_with_weak_as (Counter, Counter_1, 5, "B");
+    } pa_coend;
+
     printf("Redo first sequential\n");
     pa_run (Counter, 10, "A");
     

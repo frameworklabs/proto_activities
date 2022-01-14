@@ -108,8 +108,19 @@ typedef int8_t pa_rc_t;
 #define pa_with_weak_as(nm, alias, ...) _pa_with_weak_templ(nm, _pa_call_as(nm, alias, ##__VA_ARGS__));
 
 #define pa_coend \
-        for (int i = 0; i < _pa_co_i; ++i) { \
-            if (self->_pa_co_rcs[i] == PA_RC_WAIT && !_pa_co_weaks[i]) { \
+        { \
+            bool _pa_any_is_strong = false; \
+            bool _pa_any_is_done = false; \
+            for (int i = 0; i < _pa_co_i; ++i) { \
+                bool _pa_is_strong = !_pa_co_weaks[i]; \
+                bool _pa_is_waiting = self->_pa_co_rcs[i] == PA_RC_WAIT; \
+                if (_pa_is_strong && _pa_is_waiting) { \
+                    return PA_RC_WAIT; \
+                } \
+                _pa_any_is_strong |= _pa_is_strong; \
+                _pa_any_is_done |= !_pa_is_waiting; \
+            } \
+            if (!_pa_any_is_strong && !_pa_any_is_done) { \
                 return PA_RC_WAIT; \
             } \
         } \
