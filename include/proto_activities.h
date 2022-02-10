@@ -50,6 +50,26 @@ typedef int8_t pa_rc_t;
         return PA_RC_DONE; \
     }
 
+/* Moduls */
+
+#define pa_activity_ctx(nm, ...) \
+    struct _pa_frame_name(nm) { \
+        pa_pc_t _pa_pc; \
+        __VA_ARGS__; \
+    }; \
+
+#define pa_activity_sig(nm, ...) \
+    extern pa_rc_t nm(_pa_frame_type(nm)* self, ##__VA_ARGS__);
+
+#define pa_activity_decl(nm, ctx, ...) \
+    pa_activity_ctx(nm, ctx); \
+    pa_activity_sig(nm, ##__VA_ARGS__);
+
+#define pa_activity_def(nm, ...) \
+    pa_rc_t nm(_pa_frame_type(nm)* self, ##__VA_ARGS__) { \
+        switch (self->_pa_pc) { \
+            case 0:
+
 /* Await */
 
 #define pa_await(cond) \
@@ -147,6 +167,25 @@ typedef int8_t pa_rc_t;
 
 #define pa_when_abort(cond, nm, ...) _pa_when_abort_templ(cond, nm, _pa_call(nm, ##__VA_ARGS__))
 #define pa_when_abort_as(cond, nm, alias, ...) _pa_when_abort_templ(cond, nm, _pa_call_as(nm, alias, ##__VA_ARGS__))
+
+#define _pa_when_reset_templ(cond, nm, call) \
+    if (call == PA_RC_WAIT) { \
+        self->_pa_pc = __LINE__; return PA_RC_WAIT; case __LINE__: \
+        while (true) { \
+            if (!(cond)) { \
+                if (call == PA_RC_WAIT) {\
+                    return PA_RC_WAIT; \
+                } else { \
+                    break; \
+                } \
+            } else { \
+                memset(&(self->_pa_inst_name(nm)), 0, sizeof(_pa_frame_type(nm))); \
+            } \
+        } \
+    }
+
+#define pa_when_reset(cond, nm, ...) _pa_when_reset_templ(cond, nm, _pa_call(nm, ##__VA_ARGS__))
+#define pa_when_reset_as(cond, nm, alias, ...) _pa_when_reset_templ(cond, nm, _pa_call_as(nm, alias, ##__VA_ARGS__))
 
 /* Trigger */
 
