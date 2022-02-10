@@ -22,7 +22,7 @@ pa_activity (Counter, pa_ctx(uint16_t i), uint16_t n, const char* prefix) {
     
     pa_self.i = n;
     while (pa_self.i-- > 0) {
-        pa_await (true);
+        pa_pause;
         printf("%s %d\n", prefix, pa_self.i);
     }
 } pa_activity_end;
@@ -31,17 +31,15 @@ pa_activity (Generator, pa_ctx(uint16_t i), uint16_t* valp) {
     assert(pa_self.i == 0);
     
     pa_self.i = 0;
-    while (true) {
+    pa_always {
         *valp = pa_self.i++;
-        pa_await (true);
-    }
+    } pa_always_end;
 } pa_activity_end;
 
 pa_activity (Printer, pa_ctx(), const char* prefix, const char* str) {
-    while (true) {
+    pa_always {
         printf("%s %s\n", prefix, str);
-        pa_await (true);
-    }
+    } pa_always_end;
 } pa_activity_end;
 
 pa_activity (SubActivity, pa_ctx(pa_use(Printer); pa_use(Counter)), uint16_t val) {

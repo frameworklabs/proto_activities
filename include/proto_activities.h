@@ -192,3 +192,22 @@ typedef int8_t pa_rc_t;
 /* Trigger */
 
 #define pa_tick(nm, ...) nm(&_pa_inst_name(nm), ##__VA_ARGS__)
+
+/* Convenience */
+
+#define pa_pause pa_await (true);
+#define pa_halt pa_await (false);
+
+#define pa_always \
+    while (true) {
+
+#define pa_always_end \
+        pa_pause; \
+    }
+
+#define pa_every(cond) \
+    while (true) { \
+        pa_await (cond);
+
+#define pa_every_end \
+    }
