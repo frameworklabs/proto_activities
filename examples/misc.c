@@ -18,31 +18,31 @@ static char* int_to_str(uint16_t val) {
 /* Activities */
 
 pa_activity (Counter, pa_ctx(uint16_t i), uint16_t n, const char* prefix) {
-    assert(self->i == 0);
+    assert(pa_self.i == 0);
     
-    self->i = n;
-    while (self->i-- > 0) {
+    pa_self.i = n;
+    while (pa_self.i-- > 0) {
         pa_await (true);
-        printf("%s %d\n", prefix, self->i);
+        printf("%s %d\n", prefix, pa_self.i);
     }
-} pa_end;
+} pa_activity_end;
 
 pa_activity (Generator, pa_ctx(uint16_t i), uint16_t* valp) {
-    assert(self->i == 0);
+    assert(pa_self.i == 0);
     
-    self->i = 0;
+    pa_self.i = 0;
     while (true) {
-        *valp = self->i++;
+        *valp = pa_self.i++;
         pa_await (true);
     }
-} pa_end;
+} pa_activity_end;
 
 pa_activity (Printer, pa_ctx(), const char* prefix, const char* str) {
     while (true) {
         printf("%s %s\n", prefix, str);
         pa_await (true);
     }
-} pa_end;
+} pa_activity_end;
 
 pa_activity (SubActivity, pa_ctx(pa_use(Printer); pa_use(Counter)), uint16_t val) {
     pa_when_abort (val >= 10, Printer, "abort", ".");
@@ -50,25 +50,25 @@ pa_activity (SubActivity, pa_ctx(pa_use(Printer); pa_use(Counter)), uint16_t val
     
     pa_when_abort (val > 100, Counter, 10, "X");
     printf("!\n");
-} pa_end;
+} pa_activity_end;
 
-pa_activity (CountAndPrint, pa_ctx(pa_codef(2); pa_use(Printer); pa_use(Generator)), uint16_t* i) {
-    pa_cobegin(2) {
+pa_activity (CountAndPrint, pa_ctx(pa_co_res(2); pa_use(Printer); pa_use(Generator)), uint16_t* i) {
+    pa_co(2) {
         pa_with (Generator, i);
         pa_with (Printer, "reset", int_to_str(*i));
-    } pa_coend;
-} pa_end;
+    } pa_co_end;
+} pa_activity_end;
 
 pa_activity (ResetActivity, pa_ctx(uint16_t i; pa_use(CountAndPrint))) {
-    pa_when_reset(self->i >= 3, CountAndPrint, &self->i);
-} pa_end;
+    pa_when_reset(pa_self.i >= 3, CountAndPrint, &pa_self.i);
+} pa_activity_end;
 
-pa_activity (Main, pa_ctx(pa_codef(4); uint16_t i;
+pa_activity (Main, pa_ctx(pa_co_res(4); uint16_t i;
                           pa_use(Counter); pa_use_as(Counter, Counter_1);
                           pa_use(Generator); pa_use(Printer); pa_use(SubActivity);
                           pa_use(ResetActivity)))
 {
-    assert(self->i == 0);
+    assert(pa_self.i == 0);
     
     printf("First sequential\n");
     pa_run (Counter, 10, "A");
@@ -77,16 +77,16 @@ pa_activity (Main, pa_ctx(pa_codef(4); uint16_t i;
     pa_run_as (Counter, Counter_1, 5, "B");
     
     printf("Concurrent\n");
-    pa_cobegin(2) {
+    pa_co(2) {
         pa_with_weak (Counter, 10, "A");
         pa_with_as (Counter, Counter_1, 5, "B");
-    } pa_coend;
+    } pa_co_end;
     
     printf("Concurrent weak only\n");
-    pa_cobegin(2) {
+    pa_co(2) {
         pa_with_weak (Counter, 10, "A");
         pa_with_weak_as (Counter, Counter_1, 5, "B");
-    } pa_coend;
+    } pa_co_end;
 
     printf("Redo first sequential\n");
     pa_run (Counter, 10, "A");
@@ -95,15 +95,15 @@ pa_activity (Main, pa_ctx(pa_codef(4); uint16_t i;
     pa_run_as (Counter, Counter_1, 5, "B");
     
     printf("Preempt\n");
-    pa_cobegin(4) {
-        pa_with_weak (Generator, &self->i);
-        pa_with_weak (Printer, "pre", int_to_str(self->i));
-        pa_with (SubActivity, self->i);
+    pa_co(4) {
+        pa_with_weak (Generator, &pa_self.i);
+        pa_with_weak (Printer, "pre", int_to_str(pa_self.i));
+        pa_with (SubActivity, pa_self.i);
         pa_with_weak (ResetActivity);
-    } pa_coend;
+    } pa_co_end;
     
     printf("Done\n");
-} pa_end;
+} pa_activity_end;
    
 /* Driver */
 
