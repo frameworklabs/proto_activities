@@ -37,24 +37,36 @@ pa_activity (Generator, pa_ctx(uint16_t i), uint16_t* valp) {
     }
 } pa_end;
 
-pa_activity (Printer, pa_ctx(), const char* str) {
+pa_activity (Printer, pa_ctx(), const char* prefix, const char* str) {
     while (true) {
-        printf("%s\n", str);
+        printf("%s %s\n", prefix, str);
         pa_await (true);
     }
 } pa_end;
 
 pa_activity (SubActivity, pa_ctx(pa_use(Printer); pa_use(Counter)), uint16_t val) {
-    pa_when_abort (val >= 10, Printer, ".");
+    pa_when_abort (val >= 10, Printer, "abort", ".");
     printf("#\n");
     
     pa_when_abort (val > 100, Counter, 10, "X");
     printf("!\n");
 } pa_end;
 
+pa_activity (CountAndPrint, pa_ctx(pa_codef(2); pa_use(Printer); pa_use(Generator)), uint16_t* i) {
+    pa_cobegin(2) {
+        pa_with (Generator, i);
+        pa_with (Printer, "reset", int_to_str(*i));
+    } pa_coend;
+} pa_end;
+
+pa_activity (ResetActivity, pa_ctx(uint16_t i; pa_use(CountAndPrint))) {
+    pa_when_reset(self->i >= 3, CountAndPrint, &self->i);
+} pa_end;
+
 pa_activity (Main, pa_ctx(pa_codef(4); uint16_t i;
                           pa_use(Counter); pa_use_as(Counter, Counter_1);
-                          pa_use(Generator); pa_use(Printer); pa_use(SubActivity)))
+                          pa_use(Generator); pa_use(Printer); pa_use(SubActivity);
+                          pa_use(ResetActivity)))
 {
     assert(self->i == 0);
     
@@ -83,10 +95,11 @@ pa_activity (Main, pa_ctx(pa_codef(4); uint16_t i;
     pa_run_as (Counter, Counter_1, 5, "B");
     
     printf("Preempt\n");
-    pa_cobegin(3) {
+    pa_cobegin(4) {
         pa_with_weak (Generator, &self->i);
-        pa_with_weak (Printer, int_to_str(self->i));
+        pa_with_weak (Printer, "pre", int_to_str(self->i));
         pa_with (SubActivity, self->i);
+        pa_with_weak (ResetActivity);
     } pa_coend;
     
     printf("Done\n");

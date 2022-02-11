@@ -157,7 +157,7 @@ typedef int8_t pa_rc_t;
     if (call == PA_RC_WAIT) { \
         self->_pa_pc = __LINE__; return PA_RC_WAIT; case __LINE__: \
         if (!(cond)) { \
-            if (call == PA_RC_WAIT) {\
+            if (call == PA_RC_WAIT) { \
                 return PA_RC_WAIT; \
             } \
         } else { \
@@ -171,15 +171,14 @@ typedef int8_t pa_rc_t;
 #define _pa_when_reset_templ(cond, nm, call) \
     if (call == PA_RC_WAIT) { \
         self->_pa_pc = __LINE__; return PA_RC_WAIT; case __LINE__: \
-        while (true) { \
-            if (!(cond)) { \
-                if (call == PA_RC_WAIT) {\
-                    return PA_RC_WAIT; \
-                } else { \
-                    break; \
-                } \
-            } else { \
-                memset(&(self->_pa_inst_name(nm)), 0, sizeof(_pa_frame_type(nm))); \
+        if (!(cond)) { \
+            if (call == PA_RC_WAIT) { \
+                return PA_RC_WAIT; \
+            } \
+        } else { \
+            memset(&(self->_pa_inst_name(nm)), 0, sizeof(_pa_frame_type(nm))); \
+            if (call == PA_RC_WAIT) { \
+                return PA_RC_WAIT; \
             } \
         } \
     }
