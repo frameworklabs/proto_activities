@@ -58,13 +58,17 @@ pa_activity (CountAndPrint, pa_ctx(pa_co_res(2); pa_use(Printer); pa_use(Generat
 } pa_activity_end;
 
 pa_activity (ResetActivity, pa_ctx(uint16_t i; pa_use(CountAndPrint))) {
-    pa_when_reset(pa_self.i >= 3, CountAndPrint, &pa_self.i);
+    pa_when_reset (pa_self.i >= 3, CountAndPrint, &pa_self.i);
 } pa_activity_end;
 
-pa_activity (Main, pa_ctx(pa_co_res(4); uint16_t i;
+pa_activity (SuspendActivity, pa_ctx(pa_use(Printer)), uint16_t i) {
+    pa_when_suspend (i % 2 == 0, Printer, "suspend", int_to_str(i));
+} pa_activity_end;
+
+pa_activity (Main, pa_ctx(pa_co_res(5); uint16_t i;
                           pa_use(Counter); pa_use_as(Counter, Counter_1);
                           pa_use(Generator); pa_use(Printer); pa_use(SubActivity);
-                          pa_use(ResetActivity)))
+                          pa_use(ResetActivity); pa_use(SuspendActivity)))
 {
     assert(pa_self.i == 0);
     
@@ -93,11 +97,12 @@ pa_activity (Main, pa_ctx(pa_co_res(4); uint16_t i;
     pa_run_as (Counter, Counter_1, 5, "B");
     
     printf("Preempt\n");
-    pa_co(4) {
+    pa_co(5) {
         pa_with_weak (Generator, &pa_self.i);
         pa_with_weak (Printer, "pre", int_to_str(pa_self.i));
         pa_with (SubActivity, pa_self.i);
         pa_with_weak (ResetActivity);
+        pa_with_weak (SuspendActivity, pa_self.i);
     } pa_co_end;
     
     printf("Done\n");

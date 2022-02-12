@@ -189,6 +189,21 @@ typedef int8_t pa_rc_t;
 #define pa_when_reset(cond, nm, ...) _pa_when_reset_templ(cond, nm, _pa_call(nm, ##__VA_ARGS__))
 #define pa_when_reset_as(cond, nm, alias, ...) _pa_when_reset_templ(cond, nm, _pa_call_as(nm, alias, ##__VA_ARGS__))
 
+#define _pa_when_suspend_templ(cond, nm, call) \
+    if (call == PA_RC_WAIT) { \
+        pa_this->_pa_pc = __LINE__; return PA_RC_WAIT; case __LINE__: \
+        if (!(cond)) { \
+            if (call == PA_RC_WAIT) { \
+                return PA_RC_WAIT; \
+            } \
+        } else { \
+            return PA_RC_WAIT; \
+        } \
+    }
+
+#define pa_when_suspend(cond, nm, ...) _pa_when_suspend_templ(cond, nm, _pa_call(nm, ##__VA_ARGS__))
+#define pa_when_suspend_as(cond, nm, alias, ...) _pa_when_suspend_templ(cond, nm, _pa_call_as(nm, alias, ##__VA_ARGS__))
+
 /* Trigger */
 
 #define pa_tick(nm, ...) nm(&_pa_inst_name(nm), ##__VA_ARGS__)
