@@ -4,7 +4,7 @@ This uses the [protothreads](http://dunkels.com/adam/pt/) approach to enable act
 
 ## Example code
 
-```
+```C
 /// This allows to delay for a multiple of the base tick.
 pa_activity (Delay, pa_ctx(unsigned i), unsigned ticks) {
   pa_self.i = ticks;
@@ -14,7 +14,7 @@ pa_activity (Delay, pa_ctx(unsigned i), unsigned ticks) {
   }
 } pa_activity_end;
 
-/// This blinks an LED with 2 ticks red and 1 tick black.
+/// This blinks an LED with 2 ticks red and 1 tick off(black).
 pa_activity (Blink, pa_ctx(pa_use(Delay))) {
   while (true) {
     setLED(RED);
@@ -33,6 +33,8 @@ pa_activity (Main, pa_ctx(pa_co_res(2); pa_use(Blink); pa_use(Delay))) {
   } pa_co_end;
 } pa_activity_end;
 ```
+This will blink an LED with a period of 2 ticks red and 1 tick black for a total of 10 ticks.
+
 For a description of the statements, currently refer to the [Blech documentation](https://www.blech-lang.org/docs/user-manual/statements).
 
 ## Related projects
