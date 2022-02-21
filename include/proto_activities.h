@@ -115,20 +115,20 @@ typedef int8_t pa_rc_t;
         _pa_co_addrs[_pa_co_i] = NULL; \
         ++_pa_co_i;
 
-#define _pa_with_weak_templ(nm, call) \
+#define _pa_with_weak_templ(nm, alias, call) \
         if (pa_this->_pa_co_rcs[_pa_co_i] == PA_RC_WAIT) { \
             pa_this->_pa_co_rcs[_pa_co_i] = call; \
         } \
         _pa_co_weaks[_pa_co_i] = true; \
-        _pa_co_addrs[_pa_co_i] = &(pa_this->_pa_inst_name(nm)); \
+        _pa_co_addrs[_pa_co_i] = &(pa_this->_pa_inst_name(alias)); \
         _pa_co_szs[_pa_co_i] = sizeof(_pa_frame_type(nm)); \
         ++_pa_co_i;
 
 #define pa_with(nm, ...) _pa_with_templ(nm, _pa_call(nm, ##__VA_ARGS__));
 #define pa_with_as(nm, alias, ...) _pa_with_templ(nm, _pa_call_as(nm, alias, ##__VA_ARGS__));
 
-#define pa_with_weak(nm, ...) _pa_with_weak_templ(nm, _pa_call(nm, ##__VA_ARGS__));
-#define pa_with_weak_as(nm, alias, ...) _pa_with_weak_templ(nm, _pa_call_as(nm, alias, ##__VA_ARGS__));
+#define pa_with_weak(nm, ...) _pa_with_weak_templ(nm, nm, _pa_call(nm, ##__VA_ARGS__));
+#define pa_with_weak_as(nm, alias, ...) _pa_with_weak_templ(nm, alias, _pa_call_as(nm, alias, ##__VA_ARGS__));
 
 #define pa_co_end \
         { \
@@ -206,6 +206,7 @@ typedef int8_t pa_rc_t;
 
 /* Trigger */
 
+#define pa_init(nm) memset(&_pa_inst_name(nm), 0, sizeof(_pa_frame_type(nm)));
 #define pa_tick(nm, ...) nm(&_pa_inst_name(nm), ##__VA_ARGS__)
 
 /* Convenience */
