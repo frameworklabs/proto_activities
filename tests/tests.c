@@ -126,6 +126,7 @@ pa_activity (TestRun, pa_ctx(pa_co_res(4); int value; int actual; int expected;
 /* Co Tests */
 
 pa_activity (TestCoSpec, pa_ctx(), int* value, int* expected) {
+    
     /* All strong */
     *expected = 1;
     pa_pause;
@@ -226,6 +227,7 @@ pa_activity (TestWhenAbortSpec, pa_ctx(), int* value, int* expected) {
 } pa_end;
 
 pa_activity (TestWhenAbortTest, pa_ctx(pa_use(Counter); pa_use(Delay)), int value, int* actual) {
+    
     /* Test that preemption happens only when conditiopn is true. */
     *actual = -1;
     pa_when_abort (value == 42, Counter, (unsigned*)actual);
@@ -298,6 +300,7 @@ pa_activity (TestWhenResetSpec, pa_ctx(), int* value, int* expected) {
 } pa_end;
 
 pa_activity (TestWhenResetTest, pa_ctx(pa_co_res(2); pa_use(CountDown)), int value, int* actual) {
+    
     /* Test no reset when done. */
     *actual = -1;
     pa_when_reset (value == 42, CountDown, 3, (unsigned*)actual);
@@ -325,6 +328,79 @@ pa_activity (TestWhenReset, pa_ctx(pa_co_res(4); int value; int actual; int expe
     } pa_co_end;
 } pa_end;
 
+/* Every Tests */
+
+pa_activity (TestEverySpec, pa_ctx(), int* value, int* expected) {
+    
+    /* Test that we don't enter every on false condition. */
+    *value = 0;
+    *expected = 0;
+    pa_pause;
+    pa_pause;
+    pa_pause;
+    *value = 1;
+
+    /* Test that we always enter every on true condition. */
+    *expected = 1;
+    pa_pause;
+    *value = 0;
+    pa_pause;
+    pa_pause;
+    *value = 1;
+
+    /* Test that we enter every on alternating conditions */
+    *expected = 1;
+    pa_pause;
+    *value = 2;
+    *expected = 2;
+    pa_pause;
+    *value = 3;
+    *expected = 2;
+    pa_pause;
+    *value = 4;
+    *expected = 4;
+    pa_pause;
+    *value = 5;
+    
+    *expected = 10;
+
+} pa_end;
+
+pa_activity (TestEveryTestBody, pa_ctx(), bool cond, int value, int* actual) {
+    pa_every (cond) {
+        *actual = value;
+    } pa_every_end;
+} pa_end;
+
+pa_activity (TestEveryTest, pa_ctx(pa_use(TestEveryTestBody)), int value, int* actual) {
+    
+    /* Test that we don't enter every on false condition. */
+    pa_when_abort(value == 1, TestEveryTestBody, false, 1, actual);
+
+    /* Test that we always enter every on true condition. */
+    pa_when_abort(value == 1, TestEveryTestBody, true, 1, actual);
+
+    /* Test that we enter every on alternating conditions */
+    pa_when_abort(value == 5, TestEveryTestBody, value % 2 == 0, value, actual);
+    
+    *actual = 10;
+} pa_end;
+
+pa_activity (TestEveryCheck, pa_ctx(), int actual, int expected) {
+    pa_always {
+        assert(actual == expected);
+    } pa_always_end;
+} pa_end;
+
+pa_activity (TestEvery, pa_ctx(pa_co_res(4); int value; int actual; int expected;
+                               pa_use(TestEverySpec); pa_use(TestEveryTest); pa_use(TestEveryCheck))) {
+    pa_co(3) {
+        pa_with_weak (TestEverySpec, &pa_self.value, &pa_self.expected);
+        pa_with (TestEveryTest, pa_self.value, &pa_self.actual);
+        pa_with_weak (TestEveryCheck, pa_self.actual, pa_self.expected);
+    } pa_co_end;
+} pa_end;
+
 /* Test Driver */
 
 #define run_test(nm) \
@@ -340,6 +416,7 @@ int main(int argc, char* argv[]) {
     run_test(TestCo);
     run_test(TestWhenAbort);
     run_test(TestWhenReset);
+    run_test(TestEvery);
 
     printf("Done\n");
 

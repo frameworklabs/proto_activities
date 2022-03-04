@@ -223,7 +223,10 @@ typedef int8_t pa_rc_t;
 
 #define pa_every(cond) \
     while (true) { \
-        pa_await (cond);
+        if (!(cond)) { \
+            pa_await (cond); \
+        }
 
 #define pa_every_end \
+        pa_pause; \
     }
