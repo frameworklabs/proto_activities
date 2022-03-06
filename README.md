@@ -1,6 +1,6 @@
 # proto_activities
 
-This uses the [protothreads](http://dunkels.com/adam/pt/) approach to enable activity oriented synchronous programming (as promoted by [Blech](https://blech-lang.org/)) in pure C.
+This uses the [protothreads](http://dunkels.com/adam/pt/) approach to enable imperative synchronous programming (as promoted by [Blech](https://blech-lang.org/)) in pure C.
 
 ## Example code
 
@@ -39,4 +39,5 @@ For a description of the statements, currently refer to the [Blech documentation
 
 ## Related projects
 
-[Here](https://github.com/frameworklabs/ego) is a little robot with `proto_activities` running on three ESP32 nodes.
+[Here](https://github.com/frameworklabs/ego) is a little robot with `proto_activities` running on three ESP32 nodes.  
+[Pappe](https://github.com/frameworklabs/Pappe) is a sibling project which uses an embedded DSL to allow Blech-style imperative synchronous programming in Swift.
