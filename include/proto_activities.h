@@ -28,6 +28,7 @@ typedef int8_t pa_rc_t;
 #define _pa_inst_name(nm) nm##_inst
 #define _pa_call(nm, ...) nm(&(pa_this->_pa_inst_name(nm)), ##__VA_ARGS__)
 #define _pa_call_as(nm, alias, ...) nm(&(pa_this->_pa_inst_name(alias)), ##__VA_ARGS__)
+#define _pa_reset(inst) memset(inst, 0, sizeof(*inst));
 
 /* Context */
 
@@ -49,7 +50,7 @@ typedef int8_t pa_rc_t;
 
 #define pa_activity_end \
         } \
-        memset(pa_this, 0, sizeof(*pa_this)); \
+        _pa_reset(pa_this); \
         return PA_RC_DONE; \
     }
 
@@ -158,7 +159,7 @@ typedef int8_t pa_rc_t;
 
 /* Preemption */
 
-#define _pa_when_abort_templ(cond, nm, call) \
+#define _pa_when_abort_templ(cond, nm, alias, call) \
     if (call == PA_RC_WAIT) { \
         pa_this->_pa_pc = __LINE__; return PA_RC_WAIT; case __LINE__: \
         if (!(cond)) { \
@@ -166,14 +167,14 @@ typedef int8_t pa_rc_t;
                 return PA_RC_WAIT; \
             } \
         } else { \
-            memset(&(pa_this->_pa_inst_name(nm)), 0, sizeof(_pa_frame_type(nm))); \
+            _pa_reset(&(pa_this->_pa_inst_name(alias))); \
         } \
     }
 
-#define pa_when_abort(cond, nm, ...) _pa_when_abort_templ(cond, nm, _pa_call(nm, ##__VA_ARGS__))
-#define pa_when_abort_as(cond, nm, alias, ...) _pa_when_abort_templ(cond, nm, _pa_call_as(nm, alias, ##__VA_ARGS__))
+#define pa_when_abort(cond, nm, ...) _pa_when_abort_templ(cond, nm, nm, _pa_call(nm, ##__VA_ARGS__))
+#define pa_when_abort_as(cond, nm, alias, ...) _pa_when_abort_templ(cond, nm, alias, _pa_call_as(nm, alias, ##__VA_ARGS__))
 
-#define _pa_when_reset_templ(cond, nm, call) \
+#define _pa_when_reset_templ(cond, nm, alias, call) \
     if (call == PA_RC_WAIT) { \
         pa_this->_pa_pc = __LINE__; return PA_RC_WAIT; case __LINE__: \
         if (!(cond)) { \
@@ -181,15 +182,15 @@ typedef int8_t pa_rc_t;
                 return PA_RC_WAIT; \
             } \
         } else { \
-            memset(&(pa_this->_pa_inst_name(nm)), 0, sizeof(_pa_frame_type(nm))); \
+            _pa_reset(&(pa_this->_pa_inst_name(alias))); \
             if (call == PA_RC_WAIT) { \
                 return PA_RC_WAIT; \
             } \
         } \
     }
 
-#define pa_when_reset(cond, nm, ...) _pa_when_reset_templ(cond, nm, _pa_call(nm, ##__VA_ARGS__))
-#define pa_when_reset_as(cond, nm, alias, ...) _pa_when_reset_templ(cond, nm, _pa_call_as(nm, alias, ##__VA_ARGS__))
+#define pa_when_reset(cond, nm, ...) _pa_when_reset_templ(cond, nm, nm, _pa_call(nm, ##__VA_ARGS__))
+#define pa_when_reset_as(cond, nm, alias, ...) _pa_when_reset_templ(cond, nm, alias, _pa_call_as(nm, alias, ##__VA_ARGS__))
 
 #define _pa_when_suspend_templ(cond, nm, call) \
     if (call == PA_RC_WAIT) { \
@@ -208,7 +209,7 @@ typedef int8_t pa_rc_t;
 
 /* Trigger */
 
-#define pa_init(nm) memset(&_pa_inst_name(nm), 0, sizeof(_pa_frame_type(nm)));
+#define pa_init(nm) _pa_reset(&_pa_inst_name(nm));
 #define pa_tick(nm, ...) nm(&_pa_inst_name(nm), ##__VA_ARGS__)
 
 /* Convenience */
