@@ -3,6 +3,8 @@
  * Copyright (c) 2022, Framework Labs.
  */
 
+#pragma once
+
 /* Includes */
 
 #include <stdbool.h>
@@ -53,7 +55,7 @@ typedef int8_t pa_rc_t;
 
 #define pa_end pa_activity_end
 
-/* Moduls */
+/* Modules */
 
 #define pa_activity_ctx(nm, ...) \
     struct _pa_frame_name(nm) { \
