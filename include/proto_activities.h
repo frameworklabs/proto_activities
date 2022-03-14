@@ -26,8 +26,9 @@ typedef int8_t pa_rc_t;
 #define _pa_frame_name(nm) nm##_frame
 #define _pa_frame_type(nm) struct _pa_frame_name(nm)
 #define _pa_inst_name(nm) nm##_inst
-#define _pa_call(nm, ...) nm(&(pa_this->_pa_inst_name(nm)), ##__VA_ARGS__)
-#define _pa_call_as(nm, alias, ...) nm(&(pa_this->_pa_inst_name(alias)), ##__VA_ARGS__)
+#define _pa_inst_ptr(nm) &(pa_this->_pa_inst_name(nm))
+#define _pa_call(nm, ...) nm(_pa_inst_ptr(nm), ##__VA_ARGS__)
+#define _pa_call_as(nm, alias, ...) nm(_pa_inst_ptr(alias), ##__VA_ARGS__)
 #define _pa_reset(inst) memset(inst, 0, sizeof(*inst));
 
 /* Context */
@@ -40,11 +41,17 @@ typedef int8_t pa_rc_t;
 /* Activity */
 
 #define pa_activity(nm, ctx, ...) \
+    pa_activity_ctx(nm, ctx); \
+    static pa_activity_def(nm, ##__VA_ARGS__)
+
+#define pa_activity_ctx(nm, ...) \
     struct _pa_frame_name(nm) { \
         pa_pc_t _pa_pc; \
-        ctx; \
+        __VA_ARGS__; \
     }; \
-    static pa_rc_t nm(_pa_frame_type(nm)* pa_this, ##__VA_ARGS__) { \
+
+#define pa_activity_def(nm, ...) \
+    pa_rc_t nm(_pa_frame_type(nm)* pa_this, ##__VA_ARGS__) { \
         switch (pa_this->_pa_pc) { \
             case 0:
 
@@ -54,27 +61,12 @@ typedef int8_t pa_rc_t;
         return PA_RC_DONE; \
     }
 
-#define pa_end pa_activity_end
-
-/* Modules */
-
-#define pa_activity_ctx(nm, ...) \
-    struct _pa_frame_name(nm) { \
-        pa_pc_t _pa_pc; \
-        __VA_ARGS__; \
-    }; \
-
 #define pa_activity_sig(nm, ...) \
     extern pa_rc_t nm(_pa_frame_type(nm)* pa_this, ##__VA_ARGS__);
 
 #define pa_activity_decl(nm, ctx, ...) \
     pa_activity_ctx(nm, ctx); \
     pa_activity_sig(nm, ##__VA_ARGS__);
-
-#define pa_activity_def(nm, ...) \
-    pa_rc_t nm(_pa_frame_type(nm)* pa_this, ##__VA_ARGS__) { \
-        switch (pa_this->_pa_pc) { \
-            case 0:
 
 /* Await */
 
@@ -123,7 +115,7 @@ typedef int8_t pa_rc_t;
             pa_this->_pa_co_rcs[_pa_co_i] = call; \
         } \
         _pa_co_weaks[_pa_co_i] = true; \
-        _pa_co_addrs[_pa_co_i] = &(pa_this->_pa_inst_name(alias)); \
+        _pa_co_addrs[_pa_co_i] = _pa_inst_ptr(alias); \
         _pa_co_szs[_pa_co_i] = sizeof(_pa_frame_type(nm)); \
         ++_pa_co_i;
 
@@ -167,7 +159,7 @@ typedef int8_t pa_rc_t;
                 return PA_RC_WAIT; \
             } \
         } else { \
-            _pa_reset(&(pa_this->_pa_inst_name(alias))); \
+            _pa_reset(_pa_inst_ptr(alias)); \
         } \
     }
 
@@ -182,7 +174,7 @@ typedef int8_t pa_rc_t;
                 return PA_RC_WAIT; \
             } \
         } else { \
-            _pa_reset(&(pa_this->_pa_inst_name(alias))); \
+            _pa_reset(_pa_inst_ptr(alias)); \
             if (call == PA_RC_WAIT) { \
                 return PA_RC_WAIT; \
             } \
@@ -213,6 +205,8 @@ typedef int8_t pa_rc_t;
 #define pa_tick(nm, ...) nm(&_pa_inst_name(nm), ##__VA_ARGS__)
 
 /* Convenience */
+
+#define pa_end pa_activity_end
 
 #define pa_pause pa_await (true);
 #define pa_halt pa_await (false);
