@@ -8,7 +8,7 @@
 /* Includes */
 
 #include <stdbool.h>
-#include <stdint.h> // for uint16_t
+#include <stdint.h> // for uint16_t etc.
 #include <string.h> // for memset
 
 /* Types */
@@ -97,8 +97,7 @@ typedef int8_t pa_rc_t;
     memset(pa_this->_pa_co_rcs, -1, sizeof(pa_rc_t) * n); \
     pa_this->_pa_pc = __LINE__; case __LINE__: \
     { \
-        int _pa_co_i = 0; \
-        bool _pa_co_weaks[n]; \
+        uint8_t _pa_co_i = 0; \
         void* _pa_co_addrs[n]; \
         size_t _pa_co_szs[n];
 
@@ -106,7 +105,6 @@ typedef int8_t pa_rc_t;
         if (pa_this->_pa_co_rcs[_pa_co_i] == PA_RC_WAIT) { \
             pa_this->_pa_co_rcs[_pa_co_i] = call; \
         } \
-        _pa_co_weaks[_pa_co_i] = false; \
         _pa_co_addrs[_pa_co_i] = NULL; \
         ++_pa_co_i;
 
@@ -114,7 +112,6 @@ typedef int8_t pa_rc_t;
         if (pa_this->_pa_co_rcs[_pa_co_i] == PA_RC_WAIT) { \
             pa_this->_pa_co_rcs[_pa_co_i] = call; \
         } \
-        _pa_co_weaks[_pa_co_i] = true; \
         _pa_co_addrs[_pa_co_i] = _pa_inst_ptr(alias); \
         _pa_co_szs[_pa_co_i] = sizeof(_pa_frame_type(nm)); \
         ++_pa_co_i;
@@ -129,8 +126,8 @@ typedef int8_t pa_rc_t;
         { \
             bool _pa_any_is_strong = false; \
             bool _pa_any_is_done = false; \
-            for (int i = 0; i < _pa_co_i; ++i) { \
-                bool _pa_is_strong = !_pa_co_weaks[i]; \
+            for (uint8_t i = 0; i < _pa_co_i; ++i) { \
+                bool _pa_is_strong = _pa_co_addrs[i] == NULL; \
                 bool _pa_is_waiting = pa_this->_pa_co_rcs[i] == PA_RC_WAIT; \
                 if (_pa_is_strong && _pa_is_waiting) { \
                     return PA_RC_WAIT; \
@@ -142,7 +139,7 @@ typedef int8_t pa_rc_t;
                 return PA_RC_WAIT; \
             } \
         } \
-        for (int i = 0; i < _pa_co_i; ++i) { \
+        for (uint8_t i = 0; i < _pa_co_i; ++i) { \
             if (_pa_co_addrs[i]) { \
                 memset(_pa_co_addrs[i], 0, _pa_co_szs[i]); \
             } \
