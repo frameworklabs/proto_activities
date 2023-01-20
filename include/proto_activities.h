@@ -57,8 +57,7 @@ typedef int8_t pa_rc_t;
 
 #define pa_activity_end \
         } \
-        _pa_reset(pa_this); \
-        return PA_RC_DONE; \
+        pa_return; \
     }
 
 #define pa_activity_sig(nm, ...) \
@@ -67,6 +66,10 @@ typedef int8_t pa_rc_t;
 #define pa_activity_decl(nm, ctx, ...) \
     pa_activity_ctx(nm, ctx); \
     pa_activity_sig(nm, ##__VA_ARGS__);
+
+#define pa_return \
+    _pa_reset(pa_this); \
+    return PA_RC_DONE;
 
 /* Await */
 
@@ -208,6 +211,11 @@ typedef int8_t pa_rc_t;
 #define pa_pause pa_await (true);
 #define pa_halt pa_await (false);
 
+#define pa_await_immediate(cond) \
+    if (!(cond)) { \
+        pa_await (cond); \
+    }
+
 #define pa_always \
     while (true) {
 
@@ -217,9 +225,7 @@ typedef int8_t pa_rc_t;
 
 #define pa_every(cond) \
     while (true) { \
-        if (!(cond)) { \
-            pa_await (cond); \
-        }
+        pa_await_immediate (cond);
 
 #define pa_every_end \
         pa_pause; \
