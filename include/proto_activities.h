@@ -229,15 +229,18 @@ typedef int8_t pa_rc_t;
         pa_await (cond); \
     }
 
+#define pa_repeat \
+    while (true)
+
 #define pa_always \
-    while (true) {
+    pa_repeat {
 
 #define pa_always_end \
         pa_pause; \
     }
 
 #define pa_every(cond) \
-    while (true) { \
+    pa_repeat { \
         pa_await_immediate (cond);
 
 #define pa_every_end \
