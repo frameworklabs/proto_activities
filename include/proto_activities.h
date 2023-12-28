@@ -1,6 +1,6 @@
 /* proto_activities
  *
- * Copyright (c) 2022, Framework Labs.
+ * Copyright (c) 2022-2023, Framework Labs.
  */
 
 #pragma once
@@ -71,24 +71,37 @@ typedef int8_t pa_rc_t;
     _pa_reset(pa_this); \
     return PA_RC_DONE;
 
+/* Expert API */
+
+#define pa_wait \
+    return PA_RC_WAIT;
+
+#define pa_mark_and_wait \
+    pa_this->_pa_pc = __LINE__; pa_wait; case __LINE__:
+
+#define pa_mark_and_continue \
+    pa_this->_pa_pc = __LINE__; case __LINE__:
+
 /* Await */
 
 #define pa_await(cond) \
-    pa_this->_pa_pc = __LINE__; return PA_RC_WAIT; case __LINE__: \
+    pa_mark_and_wait; \
     if (!(cond)) { \
-        return PA_RC_WAIT; \
+        pa_wait; \
     }
 
 /* Run */
 
-#define pa_run(nm, ...) pa_this->_pa_pc = __LINE__; case __LINE__: \
+#define pa_run(nm, ...) \
+    pa_mark_and_continue; \
     if (_pa_call(nm, ##__VA_ARGS__) == PA_RC_WAIT) { \
-        return PA_RC_WAIT; \
+        pa_wait; \
     }
 
-#define pa_run_as(nm, alias, ...) pa_this->_pa_pc = __LINE__; case __LINE__: \
+#define pa_run_as(nm, alias, ...) \
+    pa_mark_and_continue; \
     if (_pa_call_as(nm, alias, ##__VA_ARGS__) == PA_RC_WAIT) { \
-        return PA_RC_WAIT; \
+        pa_wait; \
     }
 
 /* Concurrency */
@@ -98,7 +111,7 @@ typedef int8_t pa_rc_t;
 
 #define pa_co(n) \
     memset(pa_this->_pa_co_rcs, -1, sizeof(pa_rc_t) * n); \
-    pa_this->_pa_pc = __LINE__; case __LINE__: \
+    pa_mark_and_continue; \
     { \
         uint8_t _pa_co_i = 0; \
         void* _pa_co_addrs[n]; \
@@ -133,13 +146,13 @@ typedef int8_t pa_rc_t;
                 bool _pa_is_strong = _pa_co_addrs[i] == NULL; \
                 bool _pa_is_waiting = pa_this->_pa_co_rcs[i] == PA_RC_WAIT; \
                 if (_pa_is_strong && _pa_is_waiting) { \
-                    return PA_RC_WAIT; \
+                    pa_wait; \
                 } \
                 _pa_any_is_strong |= _pa_is_strong; \
                 _pa_any_is_done |= !_pa_is_waiting; \
             } \
             if (!_pa_any_is_strong && !_pa_any_is_done) { \
-                return PA_RC_WAIT; \
+                pa_wait; \
             } \
         } \
         for (uint8_t i = 0; i < _pa_co_i; ++i) { \
@@ -153,10 +166,10 @@ typedef int8_t pa_rc_t;
 
 #define _pa_when_abort_templ(cond, nm, alias, call) \
     if (call == PA_RC_WAIT) { \
-        pa_this->_pa_pc = __LINE__; return PA_RC_WAIT; case __LINE__: \
+        pa_mark_and_wait; \
         if (!(cond)) { \
             if (call == PA_RC_WAIT) { \
-                return PA_RC_WAIT; \
+                pa_wait; \
             } \
         } else { \
             _pa_reset(_pa_inst_ptr(alias)); \
@@ -168,15 +181,15 @@ typedef int8_t pa_rc_t;
 
 #define _pa_when_reset_templ(cond, nm, alias, call) \
     if (call == PA_RC_WAIT) { \
-        pa_this->_pa_pc = __LINE__; return PA_RC_WAIT; case __LINE__: \
+        pa_mark_and_wait; \
         if (!(cond)) { \
             if (call == PA_RC_WAIT) { \
-                return PA_RC_WAIT; \
+                pa_wait; \
             } \
         } else { \
             _pa_reset(_pa_inst_ptr(alias)); \
             if (call == PA_RC_WAIT) { \
-                return PA_RC_WAIT; \
+                pa_wait; \
             } \
         } \
     }
@@ -186,13 +199,13 @@ typedef int8_t pa_rc_t;
 
 #define _pa_when_suspend_templ(cond, nm, call) \
     if (call == PA_RC_WAIT) { \
-        pa_this->_pa_pc = __LINE__; return PA_RC_WAIT; case __LINE__: \
+        pa_mark_and_wait \
         if (!(cond)) { \
             if (call == PA_RC_WAIT) { \
-                return PA_RC_WAIT; \
+                pa_wait; \
             } \
         } else { \
-            return PA_RC_WAIT; \
+            pa_wait; \
         } \
     }
 
@@ -216,15 +229,18 @@ typedef int8_t pa_rc_t;
         pa_await (cond); \
     }
 
+#define pa_repeat \
+    while (true)
+
 #define pa_always \
-    while (true) {
+    pa_repeat {
 
 #define pa_always_end \
         pa_pause; \
     }
 
 #define pa_every(cond) \
-    while (true) { \
+    pa_repeat { \
         pa_await_immediate (cond);
 
 #define pa_every_end \
