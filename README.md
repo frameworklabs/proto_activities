@@ -39,7 +39,8 @@ For a description of the statements, currently refer to the [Blech documentation
 
 ## Related projects
 
+* A medium article about proto_activities can be found [here](https://medium.com/@zauberei02_ruhigste/boosting-embedded-real-time-productivity-with-imperative-synchronous-programming-22aa2eb38414).
+* [Here](https://github.com/frameworklabs/ego) is a little robot with `proto_activities` running on three ESP32 nodes.
 * See running proto_activities code in [this](https://wokwi.com/projects/385178429273730049) online Wokwi simulator. 
-* [Here](https://github.com/frameworklabs/ego) is a little robot with `proto_activities` running on three ESP32 nodes. 
 * [Pappe](https://github.com/frameworklabs/Pappe) is a sibling project which uses an embedded DSL to allow Blech-style imperative synchronous programming in Swift.
 
