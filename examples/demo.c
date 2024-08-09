@@ -13,42 +13,55 @@ enum Color {
     RED, BLACK
 };
 
-void setLED(enum Color color) {
+void setLED(int pin, enum Color color) {
     switch (color) {
-        case RED: printf("LED = red\n"); break;
-        case BLACK: printf("LED = black\n"); break;
+        case RED: printf("LED[%d] = red\n", pin); break;
+        case BLACK: printf("LED[%d] = black\n", pin); break;
     }
 }
 
 /* Activitis */
 
-/* This allows to delay for a multiple of the base tick. */
-pa_activity (Delay, pa_ctx(unsigned i), unsigned ticks) {
-    pa_self.i = ticks;
-    while (pa_self.i > 0) {
-        --pa_self.i;
+/* This blinks an LED on every other tick. */
+pa_activity (FastBlinker, pa_ctx(), int pin) {
+    while (true) {
+        setLED(pin, RED);
+        pa_pause;
+
+        setLED(pin, BLACK);
         pa_pause;
     }
 } pa_activity_end;
 
-/* This blinks an LED with 2 ticks red and 1 tick off(black). */
-pa_activity (Blink, pa_ctx(pa_use(Delay))) {
+/* This blinks an LED on a custom schedule. */
+pa_activity (SlowBlinker, pa_ctx_tm(), int pin, unsigned on_ticks, unsigned off_ticks) {
     while (true) {
-        setLED(RED);
-        pa_run (Delay, 2);
+        setLED(pin, RED);
+        pa_delay (on_ticks);
 
-        setLED(BLACK);
-        pa_run (Delay, 1);
+        setLED(pin, BLACK);
+        pa_delay (off_ticks);
     }
 } pa_activity_end;
 
-/* This drives a blinking LED and preempts it after 10 ticks. */
-pa_activity (Main, pa_ctx(pa_co_res(2); pa_use(Blink); pa_use(Delay))) {
+/* An activity which delays for a given number of ticks. */
+pa_activity (Delay, pa_ctx_tm(), unsigned ticks) {
+    pa_delay (ticks);
+} pa_activity_end;
+
+
+/* This drives blinking LEDs and preempts them after 3 and 10 ticks. */
+pa_activity (Main, pa_ctx_tm(pa_co_res(3); pa_use(Delay); pa_use(FastBlinker); pa_use(SlowBlinker))) {
     printf("Begin\n");
+
+    /* Blink Fast LED for 3 ticks */
+    pa_after_abort (3, FastBlinker, 0);
     
-    pa_co(2) {
+    /* Blink both LED for 10 ticks */
+    pa_co(3) {
         pa_with (Delay, 10);
-        pa_with_weak (Blink);
+        pa_with_weak (FastBlinker, 0);
+        pa_with_weak (SlowBlinker, 1, 3, 2);
     } pa_co_end;
     
     printf("Done\n");

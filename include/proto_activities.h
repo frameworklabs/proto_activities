@@ -1,6 +1,6 @@
 /* proto_activities
  *
- * Copyright (c) 2022-2023, Framework Labs.
+ * Copyright (c) 2022-2024, Framework Labs.
  */
 
 #pragma once
@@ -8,13 +8,14 @@
 /* Includes */
 
 #include <stdbool.h>
-#include <stdint.h> // for uint16_t etc.
-#include <string.h> // for memset
+#include <stdint.h> /* for uint16_t etc. */
+#include <string.h> /* for memset */
 
 /* Types */
 
 typedef uint16_t pa_pc_t;
 typedef int8_t pa_rc_t;
+typedef uint64_t pa_time_t;
 
 /* Constants */
 
@@ -30,10 +31,12 @@ typedef int8_t pa_rc_t;
 #define _pa_call(nm, ...) nm(_pa_inst_ptr(nm), ##__VA_ARGS__)
 #define _pa_call_as(nm, alias, ...) nm(_pa_inst_ptr(alias), ##__VA_ARGS__)
 #define _pa_reset(inst) memset(inst, 0, sizeof(*inst));
+#define _pa_abort(inst) _pa_reset(inst); *inst._pa_pc = 0xffff;
 
 /* Context */
 
 #define pa_ctx(vars...) vars
+#define pa_ctx_tm(vars...) pa_ctx(pa_time_t _pa_time; vars)
 #define pa_use(nm) _pa_frame_type(nm) _pa_inst_name(nm);
 #define pa_use_as(nm, alias) _pa_frame_type(nm) _pa_inst_name(alias);
 #define pa_self (*pa_this)
@@ -48,12 +51,13 @@ typedef int8_t pa_rc_t;
     struct _pa_frame_name(nm) { \
         pa_pc_t _pa_pc; \
         __VA_ARGS__; \
-    }; \
+    };
 
 #define pa_activity_def(nm, ...) \
     pa_rc_t nm(_pa_frame_type(nm)* pa_this, ##__VA_ARGS__) { \
         switch (pa_this->_pa_pc) { \
-            case 0:
+            case 0: \
+            case 0xffff:
 
 #define pa_activity_end \
         } \
@@ -79,6 +83,9 @@ typedef int8_t pa_rc_t;
 #define pa_mark_and_wait \
     pa_this->_pa_pc = __LINE__; pa_wait; case __LINE__:
 
+#define pa_mark_and_wait2 \
+    pa_this->_pa_pc = __LINE__ | 0x8000; pa_wait; case __LINE__ | 0x8000:
+
 #define pa_mark_and_continue \
     pa_this->_pa_pc = __LINE__; case __LINE__:
 
@@ -89,6 +96,26 @@ typedef int8_t pa_rc_t;
     if (!(cond)) { \
         pa_wait; \
     }
+
+/* Delay */
+
+#define pa_delay(ticks) \
+    pa_self._pa_time = ticks; \
+    pa_mark_and_continue; \
+    if (pa_self._pa_time-- > 0) { \
+        pa_wait; \
+    }
+
+/* Define like this (Arduino) for your platform: #define pa_get_time_ms millis() */
+
+#define pa_delay_ms(ms) \
+    pa_self._pa_time = pa_get_time_ms + ms; \
+    pa_mark_and_continue; \
+    if (pa_get_time_ms < pa_self._pa_time) { \
+        pa_wait; \
+    }
+
+#define pa_delay_s(s) pa_delay_ms(s * 1000)
 
 /* Run */
 
@@ -158,11 +185,16 @@ typedef int8_t pa_rc_t;
         for (uint8_t i = 0; i < _pa_co_i; ++i) { \
             if (_pa_co_addrs[i]) { \
                 memset(_pa_co_addrs[i], 0, _pa_co_szs[i]); \
+                if (pa_this->_pa_co_rcs[i] == PA_RC_WAIT) { \
+                    *(pa_pc_t*)(_pa_co_addrs[i]) = 0xffff; \
+                } \
             } \
         } \
     }
 
 /* Preemption */
+
+#define pa_did_abort(nm) (*_pa_inst_ptr(nm)._pa_pc == 0xffff)
 
 #define _pa_when_abort_templ(cond, nm, alias, call) \
     if (call == PA_RC_WAIT) { \
@@ -172,7 +204,7 @@ typedef int8_t pa_rc_t;
                 pa_wait; \
             } \
         } else { \
-            _pa_reset(_pa_inst_ptr(alias)); \
+            _pa_abort(_pa_inst_ptr(alias)); \
         } \
     }
 
@@ -187,7 +219,7 @@ typedef int8_t pa_rc_t;
                 pa_wait; \
             } \
         } else { \
-            _pa_reset(_pa_inst_ptr(alias)); \
+            _pa_abort(_pa_inst_ptr(alias)); \
             if (call == PA_RC_WAIT) { \
                 pa_wait; \
             } \
@@ -211,6 +243,23 @@ typedef int8_t pa_rc_t;
 
 #define pa_when_suspend(cond, nm, ...) _pa_when_suspend_templ(cond, nm, _pa_call(nm, ##__VA_ARGS__))
 #define pa_when_suspend_as(cond, nm, alias, ...) _pa_when_suspend_templ(cond, nm, _pa_call_as(nm, alias, ##__VA_ARGS__))
+
+#define _pa_after_abort_templ(ticks, nm, alias, call) \
+    pa_self._pa_time = ticks; \
+    _pa_when_abort_templ(--pa_self._pa_time == 0, nm, alias, call);
+
+#define pa_after_abort(ticks, nm, ...) _pa_after_abort_templ(ticks, nm, nm, _pa_call(nm, ##__VA_ARGS__))
+#define pa_after_abort_as(ticks, nm, alias, ...) _pa_after_abort_templ(ticks, nm, alias, _pa_call_as(nm, alias, ##__VA_ARGS__))
+
+#define _pa_after_ms_abort_templ(ms, nm, alias, call) \
+    pa_self._pa_time = pa_get_time_ms + ms; \
+    _pa_when_abort_templ(pa_get_time_ms >= pa_self._pa_time, nm, alias, call);
+
+#define pa_after_ms_abort(ms, nm, ...) _pa_after_ms_abort_templ(ms, nm, nm, _pa_call(nm, ##__VA_ARGS__))
+#define pa_after_ms_abort_as(ms, nm, alias, ...) _pa_after_ms_abort_templ(ms, nm, alias, _pa_call_as(nm, alias, ##__VA_ARGS__))
+
+#define pa_after_s_abort(s, nm, ...) pa_after_ms_abort(s * 1000, nm, ##__VA_ARGS__)
+#define pa_after_s_abort_as(s, nm, alias, ...) pa_after_ms_abort_as(s * 1000, nm, alias, ##__VA_ARGS__)
 
 /* Trigger */
 
@@ -246,3 +295,15 @@ typedef int8_t pa_rc_t;
 #define pa_every_end \
         pa_pause; \
     }
+
+#define _pa_whenever_templ(cond, nm, alias, call) \
+    pa_repeat { \
+        if (cond) {\
+            _pa_when_abort_templ (!(cond), nm, alias, call); \
+        } else { \
+            pa_mark_and_wait2; \
+        } \
+    }
+
+#define pa_whenever(cond, nm, ...) _pa_whenever_templ(cond, nm, nm, _pa_call(nm, ##__VA_ARGS__))
+#define pa_whenever_as(cond, nm, alias, ...) _pa_whenever_templ(cond, nm, alias, _pa_call_as(nm, alias, ##__VA_ARGS__))
