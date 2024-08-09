@@ -5,37 +5,73 @@ This uses the [protothreads](http://dunkels.com/adam/pt/) approach to enable imp
 ## Example code
 
 ```C
-/// This allows to delay for a multiple of the base tick.
-pa_activity (Delay, pa_ctx(unsigned i), unsigned ticks) {
-  pa_self.i = ticks;
-  while (pa_self.i > 0) {
-    --pa_self.i;
-    pa_pause;
-  }
+/* This blinks an LED on every other tick. */
+pa_activity (FastBlinker, pa_ctx(), int pin) {
+    while (true) {
+        setLED(pin, RED);
+        pa_pause;
+
+        setLED(pin, BLACK);
+        pa_pause;
+    }
 } pa_activity_end;
 
-/// This blinks an LED with 2 ticks red and 1 tick off(black).
-pa_activity (Blink, pa_ctx(pa_use(Delay))) {
-  while (true) {
-    setLED(RED);
-    pa_run (Delay, 2);
+/* This blinks an LED on a custom schedule. */
+pa_activity (SlowBlinker, pa_ctx_tm(), int pin, unsigned on_ticks, unsigned off_ticks) {
+    while (true) {
+        setLED(pin, RED);
+        pa_delay (on_ticks);
+
+        setLED(pin, BLACK);
+        pa_delay (off_ticks);
+    }
+} pa_activity_end;
+
+/* An activity which delays for a given number of ticks. */
+pa_activity (Delay, pa_ctx_tm(), unsigned ticks) {
+    pa_delay (ticks);
+} pa_activity_end;
+
+
+/* This drives blinking LEDs and preempts them after 3 and 10 ticks. */
+pa_activity (Main, pa_ctx_tm(pa_co_res(3); pa_use(Delay); pa_use(FastBlinker); pa_use(SlowBlinker))) {
+    printf("Begin\n");
+
+    /* Blink Fast LED for 3 ticks */
+    pa_after_abort (3, FastBlinker, 0);
     
-    setLED(BLACK);
-    pa_run (Delay, 1);
-  }
-} pa_activity_end;
-
-/// This drives a blinking LED and preempts it after 10 ticks.
-pa_activity (Main, pa_ctx(pa_co_res(2); pa_use(Blink); pa_use(Delay))) {
-  pa_co(2) {
-    pa_with (Delay, 10);
-    pa_with_weak (Blink);
-  } pa_co_end;
+    /* Blink both LED for 10 ticks */
+    pa_co(3) {
+        pa_with (Delay, 10);
+        pa_with_weak (FastBlinker, 0);
+        pa_with_weak (SlowBlinker, 1, 3, 2);
+    } pa_co_end;
+    
+    printf("Done\n");
 } pa_activity_end;
 ```
-This will blink an LED with a period of 2 ticks red and 1 tick black for a total of 10 ticks.
 
-For a description of the statements, currently refer to the [Blech documentation](https://www.blech-lang.org/docs/user-manual/statements).
+For a detailed description of the statements, currently refer to the [Blech documentation](https://www.blech-lang.org/docs/user-manual/statements).
+
+* `pa_pause`: will pause the activity for one tick
+* `pa_halt`: will pause the activity forever
+* `pa_await (cond)`: will pause the activity and resume it once cond becomes true
+* `pa_delay (ticks)`: will pause the activity for the given number of ticks
+* `pa_delay_ms (ms)`: will pause the activity for the giveb number of milliseconds
+* `pa_run (activity, ...)`: runs the given sub-activity until it returns
+* `pa_return`: end an activity from within its body - otherwise ends at the end.
+* `pa_co(n)`: starts a concurrent section - reserve the number of trails with pa_co_res(num_trails)
+* `pa_with (activity, ...)`: runs the given activity concurrently with the others of this section
+* `pa_with_weak (activity, ...)`: runs the given activity concurrently with the others of this section and can be preempted
+* `pa_when_abort (cond, activity, ...)`: runs the given activity until cond becomes true in a subsequent tick - unless it ends before
+* `pa_when_reset (cond, activity, ...)`: runs the given activity and restarts it when cond becomes true in a subsequen tick
+* `pa_when_suspend (cond, activity, ...)`: will suspend the given activity while cond is true and lets it continue when cond is false again
+* `pa_after_abort (ticks, activity, ...)`: will abort the given activity after the specified number of ticks
+* `pa_after_ms_abort (ms, activity, ...)`: will abort the given activity after the specified time in milliseconds
+* `pa_did_abort (activity)`: reports whether an activity was aborted in the call before
+* `pa_always`: will run code on every tick
+* `pa_every (cond)`: will run code everytime cond is true
+* `pa_whenever (cond, activity, ...)`: will run the given activity whenever cond is true and abort it if cond turns false
 
 ## Related projects
 
