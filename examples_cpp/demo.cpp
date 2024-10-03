@@ -1,38 +1,49 @@
 // demo.cpp
 
-// Includes
-
 #include "proto_activities.h"
 
 #include <iostream>
 #include <thread>
 #include <chrono>
 
-// LED
+namespace common {
 
-enum Color {
+// An activity which delays for a given number of ticks.
+pa_activity (Delay, pa_ctx_tm(), unsigned ticks) {
+    pa_delay (ticks);
+} pa_activity_end;
+
+} // namespace common
+
+namespace led {
+
+enum class Color {
     RED, BLACK
 };
 
 void setLED(int pin, enum Color color) {
     switch (color) {
-        case RED: std::cout << "LED[" << pin << "] = red" << std::endl; break;
-        case BLACK: std::cout << "LED[" << pin << "] = black" << std::endl; break;
+        case Color::RED: std::cout << "LED[" << pin << "] = red" << std::endl; break;
+        case Color::BLACK: std::cout << "LED[" << pin << "] = black" << std::endl; break;
     }
 }
 
-// Activities
+} // namespace led
+
+namespace blinker {
+
+using namespace led;
 
 // This blinks an LED on every other tick.
 pa_activity (FastBlinker, pa_ctx(pa_defer_res), int pin) {
     pa_defer {
-        setLED(pin, BLACK);
+        setLED(pin, Color::BLACK);
     };
     while (true) {
-        setLED(pin, RED);
+        setLED(pin, Color::RED);
         pa_pause;
 
-        setLED(pin, BLACK);
+        setLED(pin, Color::BLACK);
         pa_pause;
     }
 } pa_activity_end;
@@ -40,25 +51,23 @@ pa_activity (FastBlinker, pa_ctx(pa_defer_res), int pin) {
 // This blinks an LED on a custom schedule.
 pa_activity (SlowBlinker, pa_ctx_tm(pa_defer_res), int pin, unsigned on_ticks, unsigned off_ticks) {
     pa_defer {
-        setLED(pin, BLACK);
+        setLED(pin, Color::BLACK);
     };
     while (true) {
-        setLED(pin, RED);
+        setLED(pin, Color::RED);
         pa_delay (on_ticks);
 
-        setLED(pin, BLACK);
+        setLED(pin, Color::BLACK);
         pa_delay (off_ticks);
     }
 } pa_activity_end;
 
-// An activity which delays for a given number of ticks.
-pa_activity (Delay, pa_ctx_tm(), unsigned ticks) {
-    pa_delay (ticks);
-} pa_activity_end;
+} // namespace blinker
 
+namespace driver {
 
 // This drives blinking LEDs and preempts them after 3 and 10 ticks.
-pa_activity (Main, pa_ctx_tm(pa_co_res(3); pa_use(Delay); pa_use(FastBlinker); pa_use(SlowBlinker))) {
+pa_activity (Main, pa_ctx_tm(pa_co_res(3); pa_use_ns(common, Delay); pa_use_ns(blinker, FastBlinker); pa_use_ns(blinker, SlowBlinker))) {
     std::cout << "Begin" << std::endl;
 
     // Blink Fast LED for 3 ticks
@@ -76,9 +85,9 @@ pa_activity (Main, pa_ctx_tm(pa_co_res(3); pa_use(Delay); pa_use(FastBlinker); p
     std::cout << "Done" << std::endl;
 } pa_activity_end;
 
-// Driver
+} // namespace driver
 
-pa_use(Main);
+pa_use_ns(driver, Main);
 
 int main(int argc, char* argv[]) {
     

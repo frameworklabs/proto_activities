@@ -15,6 +15,8 @@ namespace {
 
 // Helpers
 
+namespace helpers {
+
 pa_activity (Delay, pa_ctx(unsigned remaining), unsigned i) {
     pa_self.remaining = i;
     while (pa_self.remaining-- > 0) {
@@ -36,7 +38,15 @@ pa_activity (Counter, pa_ctx(unsigned value), unsigned& res) {
     } pa_always_end;
 } pa_end;
 
+} // namespace helpers
+
+// Tests
+
+namespace tests {
+
 // Await Tests
+
+namespace await {
 
 pa_activity (TestAwaitSpec, pa_ctx(), int& value, int& expected) {
     value = 0;
@@ -76,6 +86,8 @@ pa_activity (TestAwait, pa_ctx(pa_co_res(4); int value; int actual; int expected
         pa_with_weak (TestAwaitCheck, pa_self.actual, pa_self.expected);
     } pa_co_end;
 } pa_end;
+
+} // namespace await
 
 // Delay Tests
 
@@ -216,7 +228,7 @@ pa_activity (TestCoSpec, pa_ctx(), int& value, int& expected) {
 } pa_end;
 
 pa_activity (TestCoTest, pa_ctx(pa_co_res(4);
-                                pa_use_as(Delay, Delay1); pa_use_as(Delay, Delay2); pa_use_as(Delay, Delay3)),
+                                pa_use_as_ns(helpers, Delay, Delay1); pa_use_as_ns(helpers, Delay, Delay2); pa_use_as_ns(helpers, Delay, Delay3)),
                          int value, int& actual) {
     // All strong
     actual = 1;
@@ -344,7 +356,7 @@ pa_activity (TestWhenAbortSpec, pa_ctx(), int& value, int& expected) {
 
 } pa_end;
 
-pa_activity (TestWhenAbortTest, pa_ctx_tm(pa_use(Counter); pa_use(Delay)), int value, int& actual) {
+pa_activity (TestWhenAbortTest, pa_ctx_tm(pa_use_ns(helpers, Counter); pa_use_ns(helpers, Delay)), int value, int& actual) {
     
     // Test that preemption happens only when condition is true.
     actual = -1;
@@ -455,7 +467,7 @@ pa_activity (TestWhenResetSpec, pa_ctx(), int& value, int& expected) {
     expected = -1;
 } pa_end;
 
-pa_activity (TestWhenResetTest, pa_ctx(pa_co_res(2); pa_use(CountDown)), int value, int& actual) {
+pa_activity (TestWhenResetTest, pa_ctx(pa_co_res(2); pa_use_ns(helpers, CountDown)), int value, int& actual) {
     
     // Test no reset when done.
     actual = -1;
@@ -548,7 +560,7 @@ pa_activity (TestEveryTestBody, pa_ctx(), bool cond, int value, int& actual) {
     } pa_every_end;
 } pa_end;
 
-pa_activity (TestEveryTest, pa_ctx(pa_use(TestEveryTestBody); pa_use(CountDown)), int value, int& actual) {
+pa_activity (TestEveryTest, pa_ctx(pa_use(TestEveryTestBody); pa_use_ns(helpers, CountDown)), int value, int& actual) {
     
     // Test that we don't enter every on false condition.
     pa_when_abort (value == 1, TestEveryTestBody, false, 1, actual);
@@ -604,7 +616,7 @@ pa_activity (TestLifecycleDeferActInRun, pa_ctx(pa_use(TestLifecycleDeferAct)), 
     pa_run (TestLifecycleDeferAct, await);
 } pa_end
 
-pa_activity (TestLifecycleDeferActInCo, pa_ctx(pa_co_res(2); pa_use(TestLifecycleDeferAct); pa_use(Counter); unsigned dummy), bool await) {
+pa_activity (TestLifecycleDeferActInCo, pa_ctx(pa_co_res(2); pa_use(TestLifecycleDeferAct); pa_use_ns(helpers, Counter); unsigned dummy), bool await) {
     pa_co(2) {
         pa_with (TestLifecycleDeferAct, await);
         pa_with_weak (Counter, pa_self.dummy);
@@ -718,24 +730,26 @@ pa_activity (TestLifecycle, pa_ctx(pa_co_res(2); pa_use(TestLifecycleBody); pa_u
     } pa_co_end
 } pa_end
 
+} // namespace tests
+
 // Test Driver
 
-#define run_test(nm) \
-    pa_use(nm); \
+#define run_test(ns, nm) \
+    pa_use_ns(ns, nm); \
     pa_init(nm); \
     while (pa_tick(nm) == PA_RC_WAIT) {}
 
 int main(int argc, char* argv[]) {
     std::cout << "Start" << std::endl;
 
-    run_test(TestAwait);
-    run_test(TestDelay);
-    run_test(TestRun);
-    run_test(TestCo);
-    run_test(TestWhenAbort);
-    run_test(TestWhenReset);
-    run_test(TestEvery);
-    run_test(TestLifecycle);
+    run_test(tests::await, TestAwait);
+    run_test(tests, TestDelay);
+    run_test(tests, TestRun);
+    run_test(tests, TestCo);
+    run_test(tests, TestWhenAbort);
+    run_test(tests, TestWhenReset);
+    run_test(tests, TestEvery);
+    run_test(tests, TestLifecycle);
 
     std::cout << "Done" << std::endl;
 

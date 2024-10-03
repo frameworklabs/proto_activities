@@ -11,7 +11,7 @@
 #include <stdint.h> /* for uint16_t etc. */
 #include <string.h> /* for memset */
 #ifdef __cplusplus
-#include <functional>
+#include <functional> /* for std::function */
 #endif
 
 /* Types */
@@ -50,7 +50,9 @@ typedef uint64_t pa_time_t;
 #define pa_use_as(nm, alias) _pa_frame_type(nm) _pa_inst_name(alias);
 #else
 #define pa_use(nm) _pa_frame_type(nm) _pa_inst_name(nm){};
+#define pa_use_ns(ns, nm) _pa_frame_type(ns::nm) _pa_inst_name(nm){};
 #define pa_use_as(nm, alias) _pa_frame_type(nm) _pa_inst_name(alias){};
+#define pa_use_as_ns(ns, nm, alias) _pa_frame_type(ns::nm) _pa_inst_name(alias){};
 #endif
 #define pa_self (*pa_this)
 
