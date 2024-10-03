@@ -298,20 +298,22 @@ namespace proto_activities {
 #define pa_when_reset(cond, nm, ...) _pa_when_reset_templ(cond, nm, nm, _pa_call(nm, ##__VA_ARGS__))
 #define pa_when_reset_as(cond, nm, alias, ...) _pa_when_reset_templ(cond, nm, alias, _pa_call_as(nm, alias, ##__VA_ARGS__))
 
-#define _pa_when_suspend_templ(cond, nm, call) \
+#define _pa_when_suspend_templ(cond, nm, alias, call) \
     if (call == PA_RC_WAIT) { \
         pa_mark_and_wait \
         if (!(cond)) { \
+            _pa_susres_resume(alias); \
             if (call == PA_RC_WAIT) { \
                 pa_wait; \
             } \
         } else { \
+            _pa_susres_suspend(alias); \
             pa_wait; \
         } \
     }
 
-#define pa_when_suspend(cond, nm, ...) _pa_when_suspend_templ(cond, nm, _pa_call(nm, ##__VA_ARGS__))
-#define pa_when_suspend_as(cond, nm, alias, ...) _pa_when_suspend_templ(cond, nm, _pa_call_as(nm, alias, ##__VA_ARGS__))
+#define pa_when_suspend(cond, nm, ...) _pa_when_suspend_templ(cond, nm, nm, _pa_call(nm, ##__VA_ARGS__))
+#define pa_when_suspend_as(cond, nm, alias, ...) _pa_when_suspend_templ(cond, nm, alias, _pa_call_as(nm, alias, ##__VA_ARGS__))
 
 #define _pa_after_abort_templ(ticks, nm, alias, call) \
     pa_self._pa_time = ticks; \
@@ -332,10 +334,16 @@ namespace proto_activities {
 
 /* Lifecycle */
 
-#ifdef __cplusplus
+#ifndef __cplusplus
+
+#define _pa_susres_suspend(alias)
+#define _pa_susres_resume(alias)
+
+#else
 
 namespace proto_activities {
     using Thunk = std::function<void()>;
+
     struct Defer {
         Defer& operator=(const Defer& other) {
             if (thunk) {
@@ -346,11 +354,47 @@ namespace proto_activities {
         }
         Thunk thunk;
     };
+
+    struct SusRes {
+        SusRes& operator=(const SusRes& other) {
+            sus_thunk = nullptr;
+            res_thunk = nullptr;
+            did_suspend = false;
+            return *this;
+        }
+        void suspend() {
+            if (did_suspend) {
+                return;
+            }
+            did_suspend = true;
+            if (sus_thunk) {
+                sus_thunk();
+            }
+        }
+        void resume() {
+            if (!did_suspend) {
+                return;
+            }
+            did_suspend = false;
+            if (res_thunk) {
+                res_thunk();
+            }
+        }
+        Thunk sus_thunk;
+        Thunk res_thunk;
+        bool did_suspend{};
+    };
 }
 
-#define pa_defer_res proto_activities::Defer _pa_defer;
-
+#define pa_defer_res proto_activities::Defer _pa_defer{};
 #define pa_defer pa_self._pa_defer.thunk = [&]()
+
+#define _pa_susres_suspend(alias) (_pa_inst_ptr(alias))->_pa_susres.suspend();
+#define _pa_susres_resume(alias) (_pa_inst_ptr(alias))->_pa_susres.resume();
+
+#define pa_susres_res proto_activities::SusRes _pa_susres{};
+#define pa_suspend pa_self._pa_susres.sus_thunk = [&]()
+#define pa_resume pa_self._pa_susres.res_thunk = [&]()
 
 #endif
 

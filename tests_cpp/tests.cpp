@@ -588,6 +588,8 @@ pa_activity (TestEvery, pa_ctx(pa_co_res(4); int value; int actual; int expected
 
 namespace {
     bool did_defer = false;
+    int suspend_count = 0;
+    int resume_count = 0;
 }
 
 pa_activity (TestLifecycleDeferAct, pa_ctx(pa_defer_res), bool await) {
@@ -609,9 +611,36 @@ pa_activity (TestLifecycleDeferActInCo, pa_ctx(pa_co_res(2); pa_use(TestLifecycl
     } pa_co_end
 } pa_end
 
-pa_activity (TestLifecycleBody, pa_ctx_tm(pa_use(TestLifecycleDeferAct);
+pa_activity (TestLifecycleSusResAct, pa_ctx(pa_susres_res)) {
+    pa_suspend {
+        suspend_count++;
+    };
+    pa_resume {
+        resume_count++;
+    };
+    pa_halt;
+} pa_end
+
+pa_activity (TestLifecycleSusResSpec, pa_ctx(), bool& suspend) {
+    suspend = false;
+    pa_pause;
+    suspend = true;
+    pa_pause;
+    pa_pause;
+    suspend = false;
+    pa_pause;
+} pa_end
+
+pa_activity (TestLifecycleSusResBody, pa_ctx(pa_use(TestLifecycleSusResAct)), bool suspend) {
+    pa_when_suspend (suspend, TestLifecycleSusResAct);
+} pa_end
+
+pa_activity (TestLifecycleBody, pa_ctx_tm(pa_co_res(2); bool suspend = false;
+                                          pa_use(TestLifecycleDeferAct);
                                           pa_use(TestLifecycleDeferActInRun);
-                                          pa_use(TestLifecycleDeferActInCo))) {
+                                          pa_use(TestLifecycleDeferActInCo);
+                                          pa_use(TestLifecycleSusResSpec);
+                                          pa_use(TestLifecycleSusResBody))) {
     pa_run (TestLifecycleDeferAct, true);
     pa_pause;
     pa_after_abort(2, TestLifecycleDeferAct, false);
@@ -626,6 +655,11 @@ pa_activity (TestLifecycleBody, pa_ctx_tm(pa_use(TestLifecycleDeferAct);
     pa_pause;
     pa_after_abort(2, TestLifecycleDeferActInCo, false);
     pa_pause;
+    
+    pa_co(2) {
+        pa_with (TestLifecycleSusResSpec, pa_self.suspend);
+        pa_with_weak (TestLifecycleSusResBody, pa_self.suspend);
+    } pa_co_end
 
 } pa_end
 
@@ -661,6 +695,19 @@ pa_activity (TestLifecycleTest, pa_ctx()) {
     assert(!did_defer);
     pa_pause;
     assert(did_defer);
+    pa_pause;
+    
+    assert(suspend_count == 0);
+    assert(resume_count == 0);
+    pa_pause;
+    assert(suspend_count == 1);
+    assert(resume_count == 0);
+    pa_pause;
+    assert(suspend_count == 1);
+    assert(resume_count == 0);
+    pa_pause;
+    assert(suspend_count == 1);
+    assert(resume_count == 1);
     pa_pause;
 } pa_end
 
