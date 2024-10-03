@@ -30,15 +30,25 @@ typedef uint64_t pa_time_t;
 #define _pa_inst_ptr(nm) &(pa_this->_pa_inst_name(nm))
 #define _pa_call(nm, ...) nm(_pa_inst_ptr(nm), ##__VA_ARGS__)
 #define _pa_call_as(nm, alias, ...) nm(_pa_inst_ptr(alias), ##__VA_ARGS__)
+#ifndef __cplusplus
 #define _pa_reset(inst) memset(inst, 0, sizeof(*inst));
 #define _pa_abort(inst) _pa_reset(inst); *inst._pa_pc = 0xffff;
+#else
+#define _pa_reset(inst) (inst)->reset();
+#define _pa_abort(inst) _pa_reset(inst); (inst)->_pa_pc = 0xffff;
+#endif
 
 /* Context */
 
 #define pa_ctx(vars...) vars
 #define pa_ctx_tm(vars...) pa_ctx(pa_time_t _pa_time; vars)
+#ifndef __cplusplus
 #define pa_use(nm) _pa_frame_type(nm) _pa_inst_name(nm);
 #define pa_use_as(nm, alias) _pa_frame_type(nm) _pa_inst_name(alias);
+#else
+#define pa_use(nm) _pa_frame_type(nm) _pa_inst_name(nm){};
+#define pa_use_as(nm, alias) _pa_frame_type(nm) _pa_inst_name(alias){};
+#endif
 #define pa_self (*pa_this)
 
 /* Activity */
@@ -47,11 +57,28 @@ typedef uint64_t pa_time_t;
     pa_activity_ctx(nm, ctx); \
     static pa_activity_def(nm, ##__VA_ARGS__)
 
+#ifndef __cplusplus
 #define pa_activity_ctx(nm, ...) \
     struct _pa_frame_name(nm) { \
         pa_pc_t _pa_pc; \
         __VA_ARGS__; \
     };
+#else
+namespace proto_activities {
+    struct AnyFrame {
+        virtual ~AnyFrame() = default;
+        virtual void reset() = 0;
+        pa_pc_t _pa_pc{};
+    };
+} // namespace proto_activities::internal
+#define pa_activity_ctx(nm, ...) \
+    struct _pa_frame_name(nm) final : proto_activities::AnyFrame { \
+        void reset() final { \
+            *this = {}; \
+        } \
+        __VA_ARGS__; \
+    };
+#endif
 
 #define pa_activity_def(nm, ...) \
     pa_rc_t nm(_pa_frame_type(nm)* pa_this, ##__VA_ARGS__) { \
@@ -136,27 +163,64 @@ typedef uint64_t pa_time_t;
 #define pa_co_res(n) \
     pa_rc_t _pa_co_rcs[n];
 
+#ifndef __cplusplus
+
+#define _pa_co_def(n) \
+    struct { \
+        void* addrs[n]; \
+        size_t szs[n]; \
+    } _pa_co;
+
+#define _pa_co_clr(i) _pa_co.addrs[i] = NULL;
+
+#define _pa_co_set(i, obj, nm) \
+    _pa_co.addrs[i] = obj; \
+    _pa_co.szs[i] = sizeof(_pa_frame_type(nm));
+
+#define _pa_co_is_strong(i) (_pa_co.addrs[i] == NULL)
+
+#define _pa_co_reset(i) memset(_pa_co.addrs[i], 0, _pa_co.szs[i]);
+
+#define _pa_co_abort(i) \
+    _pa_co_reset(i); \
+    *(pa_pc_t*)(_pa_co.addrs[i]) = 0xffff;
+
+#else
+
+#define _pa_co_def(n) \
+    proto_activities::AnyFrame* _pa_co[n];
+
+#define _pa_co_clr(i) _pa_co[i] = nullptr;
+
+#define _pa_co_set(i, obj, nm) _pa_co[i] = obj;
+
+#define _pa_co_is_strong(i) (_pa_co[i] == nullptr)
+
+#define _pa_co_reset(i) _pa_reset(_pa_co[i]);
+
+#define _pa_co_abort(i) _pa_abort(_pa_co[i]);
+
+#endif
+
 #define pa_co(n) \
     memset(pa_this->_pa_co_rcs, -1, sizeof(pa_rc_t) * n); \
     pa_mark_and_continue; \
     { \
         uint8_t _pa_co_i = 0; \
-        void* _pa_co_addrs[n]; \
-        size_t _pa_co_szs[n];
+        _pa_co_def(n);
 
 #define _pa_with_templ(nm, call) \
         if (pa_this->_pa_co_rcs[_pa_co_i] == PA_RC_WAIT) { \
             pa_this->_pa_co_rcs[_pa_co_i] = call; \
         } \
-        _pa_co_addrs[_pa_co_i] = NULL; \
+        _pa_co_clr(_pa_co_i); \
         ++_pa_co_i;
 
 #define _pa_with_weak_templ(nm, alias, call) \
         if (pa_this->_pa_co_rcs[_pa_co_i] == PA_RC_WAIT) { \
             pa_this->_pa_co_rcs[_pa_co_i] = call; \
         } \
-        _pa_co_addrs[_pa_co_i] = _pa_inst_ptr(alias); \
-        _pa_co_szs[_pa_co_i] = sizeof(_pa_frame_type(nm)); \
+        _pa_co_set(_pa_co_i, _pa_inst_ptr(alias), nm); \
         ++_pa_co_i;
 
 #define pa_with(nm, ...) _pa_with_templ(nm, _pa_call(nm, ##__VA_ARGS__));
@@ -170,7 +234,7 @@ typedef uint64_t pa_time_t;
             bool _pa_any_is_strong = false; \
             bool _pa_any_is_done = false; \
             for (uint8_t i = 0; i < _pa_co_i; ++i) { \
-                bool _pa_is_strong = _pa_co_addrs[i] == NULL; \
+                bool _pa_is_strong = _pa_co_is_strong(i); \
                 bool _pa_is_waiting = pa_this->_pa_co_rcs[i] == PA_RC_WAIT; \
                 if (_pa_is_strong && _pa_is_waiting) { \
                     pa_wait; \
@@ -183,10 +247,12 @@ typedef uint64_t pa_time_t;
             } \
         } \
         for (uint8_t i = 0; i < _pa_co_i; ++i) { \
-            if (_pa_co_addrs[i]) { \
-                memset(_pa_co_addrs[i], 0, _pa_co_szs[i]); \
+            if (!_pa_co_is_strong(i)) { \
                 if (pa_this->_pa_co_rcs[i] == PA_RC_WAIT) { \
-                    *(pa_pc_t*)(_pa_co_addrs[i]) = 0xffff; \
+                    _pa_co_abort(i); \
+                } \
+                else { \
+                    _pa_co_reset(i); \
                 } \
             } \
         } \
