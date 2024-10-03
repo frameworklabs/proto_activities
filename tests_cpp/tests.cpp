@@ -9,7 +9,9 @@
 
 // Gobals
 
-static pa_time_t pa_get_time_ms;
+namespace {
+    pa_time_t pa_get_time_ms;
+}
 
 // Helpers
 
@@ -582,6 +584,45 @@ pa_activity (TestEvery, pa_ctx(pa_co_res(4); int value; int actual; int expected
     } pa_co_end;
 } pa_end;
 
+// Test Lifecycle
+
+namespace {
+    bool did_defer = false;
+}
+
+pa_activity (TestLifecycleAct, pa_ctx(pa_defer_res), bool await) {
+    did_defer = false;
+    pa_defer {
+        did_defer = true;
+    };
+    pa_await (await);
+} pa_end
+
+pa_activity (TestLifecycleBody, pa_ctx_tm(pa_use(TestLifecycleAct))) {
+    pa_run (TestLifecycleAct, true);
+    pa_pause;
+    pa_after_abort(2, TestLifecycleAct, false);
+} pa_end
+
+pa_activity (TestLifecycleTest, pa_ctx()) {
+    assert(!did_defer);
+    pa_pause;
+    assert(did_defer);
+    pa_pause;
+    assert(!did_defer);
+    pa_pause;
+    assert(!did_defer);
+    pa_pause;
+    assert(did_defer);
+} pa_end
+
+pa_activity (TestLifecycle, pa_ctx(pa_co_res(2); pa_use(TestLifecycleBody); pa_use(TestLifecycleTest))) {
+    pa_co(2) {
+        pa_with (TestLifecycleBody);
+        pa_with (TestLifecycleTest);
+    } pa_co_end
+} pa_end
+
 // Test Driver
 
 #define run_test(nm) \
@@ -599,6 +640,7 @@ int main(int argc, char* argv[]) {
     run_test(TestWhenAbort);
     run_test(TestWhenReset);
     run_test(TestEvery);
+    run_test(TestLifecycle);
 
     std::cout << "Done" << std::endl;
 

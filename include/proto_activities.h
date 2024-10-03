@@ -10,6 +10,9 @@
 #include <stdbool.h>
 #include <stdint.h> /* for uint16_t etc. */
 #include <string.h> /* for memset */
+#ifdef __cplusplus
+#include <functional>
+#endif
 
 /* Types */
 
@@ -70,7 +73,7 @@ namespace proto_activities {
         virtual void reset() = 0;
         pa_pc_t _pa_pc{};
     };
-} // namespace proto_activities::internal
+}
 #define pa_activity_ctx(nm, ...) \
     struct _pa_frame_name(nm) final : proto_activities::AnyFrame { \
         void reset() final { \
@@ -326,6 +329,30 @@ namespace proto_activities {
 
 #define pa_after_s_abort(s, nm, ...) pa_after_ms_abort(s * 1000, nm, ##__VA_ARGS__)
 #define pa_after_s_abort_as(s, nm, alias, ...) pa_after_ms_abort_as(s * 1000, nm, alias, ##__VA_ARGS__)
+
+/* Lifecycle */
+
+#ifdef __cplusplus
+
+namespace proto_activities {
+    using Thunk = std::function<void()>;
+    struct Defer {
+        Defer& operator=(const Defer& other) {
+            if (thunk) {
+                thunk();
+                thunk = nullptr;
+            }
+            return *this;
+        }
+        Thunk thunk;
+    };
+}
+
+#define pa_defer_res proto_activities::Defer _pa_defer;
+
+#define pa_defer pa_self._pa_defer.thunk = [&]()
+
+#endif
 
 /* Trigger */
 

@@ -24,7 +24,10 @@ void setLED(int pin, enum Color color) {
 // Activities
 
 // This blinks an LED on every other tick.
-pa_activity (FastBlinker, pa_ctx(), int pin) {
+pa_activity (FastBlinker, pa_ctx(pa_defer_res), int pin) {
+    pa_defer {
+        setLED(pin, BLACK);
+    };
     while (true) {
         setLED(pin, RED);
         pa_pause;
@@ -35,7 +38,10 @@ pa_activity (FastBlinker, pa_ctx(), int pin) {
 } pa_activity_end;
 
 // This blinks an LED on a custom schedule.
-pa_activity (SlowBlinker, pa_ctx_tm(), int pin, unsigned on_ticks, unsigned off_ticks) {
+pa_activity (SlowBlinker, pa_ctx_tm(pa_defer_res), int pin, unsigned on_ticks, unsigned off_ticks) {
+    pa_defer {
+        setLED(pin, BLACK);
+    };
     while (true) {
         setLED(pin, RED);
         pa_delay (on_ticks);
@@ -55,10 +61,12 @@ pa_activity (Delay, pa_ctx_tm(), unsigned ticks) {
 pa_activity (Main, pa_ctx_tm(pa_co_res(3); pa_use(Delay); pa_use(FastBlinker); pa_use(SlowBlinker))) {
     std::cout << "Begin" << std::endl;
 
-    /* Blink Fast LED for 3 ticks */
+    // Blink Fast LED for 3 ticks
     pa_after_abort (3, FastBlinker, 0);
-    
-    /* Blink both LED for 10 ticks */
+
+    std::cout << "Aborted fast LED" << std::endl;
+
+    // Blink both LED for 10 ticks
     pa_co(3) {
         pa_with (Delay, 10);
         pa_with_weak (FastBlinker, 0);
