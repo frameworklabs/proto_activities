@@ -1,12 +1,17 @@
 # proto_activities
 
-This uses the [protothreads](http://dunkels.com/adam/pt/) approach to enable imperative synchronous programming (as promoted by [Blech](https://blech-lang.org/)) in C or C++.
+Uses the [protothreads](http://dunkels.com/adam/pt/) approach to enable imperative synchronous programming (as promoted by [Blech](https://blech-lang.org/)) in C or C++.
+
+With this header only library you can simplify your embedded programming projects by keeping a `delay` based approach but still enable multiple things to happen at once in a structured, modular and deterministic way.
 
 ## Example code
 
 ```C
 /* This blinks an LED on every other tick. */
-pa_activity (FastBlinker, pa_ctx(), int pin) {
+pa_activity (FastBlinker, pa_ctx(pa_defer_res), int pin) {
+    pa_defer {
+        setLED(pin, BLACK);
+    };
     while (true) {
         setLED(pin, RED);
         pa_pause;
@@ -17,7 +22,10 @@ pa_activity (FastBlinker, pa_ctx(), int pin) {
 } pa_end
 
 /* This blinks an LED on a custom schedule. */
-pa_activity (SlowBlinker, pa_ctx_tm(), int pin, unsigned on_ticks, unsigned off_ticks) {
+pa_activity (SlowBlinker, pa_ctx_tm(pa_defer_res), int pin, unsigned on_ticks, unsigned off_ticks) {
+    pa_defer {
+        setLED(pin, BLACK);
+    };
     while (true) {
         setLED(pin, RED);
         pa_delay (on_ticks);
@@ -51,15 +59,24 @@ pa_activity (Main, pa_ctx_tm(pa_co_res(3); pa_use(Delay); pa_use(FastBlinker); p
 } pa_end
 ```
 
-As can be seen, an activity is defined by the `pa_activity` macro which takes the
-name of the activity as first parameter. This is followed by what is called a context (`pa_ctx`) and which stores the 
-state which should outlive a single tick. In this context, also the sub-activities used are declared with `pa_use`. Separate the context elements with a semicolon `;`.
-If using delays, use the `pa_ctx_tm` instead, which holds an implicit time variable.
+In this example, a fast led is blinked for 3 ticks and then both the fast and a slow led are blinked concurrently for 10 ticks.
+
+## Constructs
+
+As can be seen in the example above, an activity is defined by the `pa_activity` macro which takes the
+name of the activity as first parameter. 
+
+This is followed by what is called a context (`pa_ctx(...)`) and which stores the 
+state which should outlive a single tick. Also sub-activities used in the activity are declared here with the `pa_use(<SomeActivity>)` macro. Separate context elements need to be separated by a semicolon (`;`).
+To use delays within an activity, use `pa_ctx_tm` instead of `pa_ctx`, which holds an implicit time variable.
+
 After the context, place the input and output parameters of the activity.
+
 At the end of an activity, use `pa_activity_end` or just `pa_end` to close it off. 
 
+Within an activity you can place normal C control structures and the following synchronous statements.
 
-For a detailed description of the statements, currently refer to the [Blech documentation](https://www.blech-lang.org/docs/user-manual/statements).
+For a detailed description of the statements, please currently refer to the [Blech documentation](https://www.blech-lang.org/docs/user-manual/statements) and look at the `proto_activities` test and example programs.
 
 * `pa_pause`: will pause the activity for one tick
 * `pa_halt`: will pause the activity forever
@@ -84,9 +101,9 @@ For a detailed description of the statements, currently refer to the [Blech docu
 
 When compiling wit C++ you could also define the following lifecycle callbacks:
 
-* `pa_defer`: defines an instantaneous block of code to run when the activity ends by itself or gets aborted
-* `pa_suspend`: defines an instantaneous block of code to run when an activity gets suspended by the surrounding `pa_when_suspend`
-* `pa_resume`: defines an instantaneous block of code to run when an activity gets resumed by the surrounding `pa_when_suspend`
+* `pa_defer`: defines an instantaneous block of code to run when the activity ends by itself or gets aborted. Add `pa_defer_res` annotation to the context to enable this feature.
+* `pa_suspend`: defines an instantaneous block of code to run when an activity gets suspended by the surrounding `pa_when_suspend`. Add `pa_susres_res` annotation to the context to enable this feature.
+* `pa_resume`: defines an instantaneous block of code to run when an activity gets resumed by the surrounding `pa_when_suspend`. Add `pa_susres_res` annotation to the context to enable this feature.
  
 
 ## Related projects
@@ -94,5 +111,5 @@ When compiling wit C++ you could also define the following lifecycle callbacks:
 * A medium article about proto_activities can be found [here](https://medium.com/@zauberei02_ruhigste/boosting-embedded-real-time-productivity-with-imperative-synchronous-programming-22aa2eb38414).
 * [Here](https://github.com/frameworklabs/ego) is a little robot with `proto_activities` running on three ESP32 nodes.
 * See running proto_activities code in [this](https://wokwi.com/projects/385178429273730049) online Wokwi simulator. 
+* [Blech](https://blech-lang.org/) is a new programming language for the embedded domain which inspired `proto_activities`.
 * [Pappe](https://github.com/frameworklabs/Pappe) is a sibling project which uses an embedded DSL to allow Blech-style imperative synchronous programming in Swift.
-

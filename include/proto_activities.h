@@ -389,14 +389,14 @@ namespace proto_activities {
 }
 
 #define pa_defer_res proto_activities::Defer _pa_defer{};
-#define pa_defer pa_self._pa_defer.thunk = [&]()
+#define pa_defer pa_self._pa_defer.thunk = [=]()
 
 #define _pa_susres_suspend(alias) (_pa_inst_ptr(alias))->_pa_susres.suspend();
 #define _pa_susres_resume(alias) (_pa_inst_ptr(alias))->_pa_susres.resume();
 
 #define pa_susres_res proto_activities::SusRes _pa_susres{};
-#define pa_suspend pa_self._pa_susres.sus_thunk = [&]()
-#define pa_resume pa_self._pa_susres.res_thunk = [&]()
+#define pa_suspend pa_self._pa_susres.sus_thunk = [=]()
+#define pa_resume pa_self._pa_susres.res_thunk = [=]()
 
 #endif
 
