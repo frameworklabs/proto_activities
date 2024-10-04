@@ -2,7 +2,7 @@
 
 Uses the [protothreads](http://dunkels.com/adam/pt/) approach to enable imperative synchronous programming (as promoted by [Blech](https://blech-lang.org/)) in C or C++.
 
-With this header only library you can simplify your embedded programming projects by keeping a `delay` based approach but still enable multiple things to happen at once in a structured, modular and deterministic way.
+With this header-only library you can simplify your embedded programming projects by keeping a `delay` based approach but still enable multiple things to happen at once in a structured, modular and deterministic way.
 
 ## Example code
 
@@ -76,27 +76,27 @@ At the end of an activity, use `pa_activity_end` or just `pa_end` to close it of
 
 Within an activity you can place normal C control structures and the following synchronous statements.
 
-For a detailed description of the statements, please currently refer to the [Blech documentation](https://www.blech-lang.org/docs/user-manual/statements) and look at the `proto_activities` test and example programs.
+For a detailed description of the statements, please currently refer to the [Blech documentation](https://www.blech-lang.org/docs/user-manual/statements) or look at the `proto_activities` test and example programs.
 
-* `pa_pause`: will pause the activity for one tick
+* `pa_pause`: will pause processing of an activity and resume it at the next tick
 * `pa_halt`: will pause the activity forever
 * `pa_await (cond)`: will pause the activity and resume it once `cond` becomes true
-* `pa_await_immediate (cond)`: like `pa_await` but will pause if `cond` is true in the current tick. 
+* `pa_await_immediate (cond)`: like `pa_await` but will *not* pause if `cond` is true in the current tick
 * `pa_delay (ticks)`: will pause the activity for the given number of ticks
-* `pa_delay_ms (ms)`: will pause the activity for the giveb number of milliseconds
+* `pa_delay_ms (ms)`: will pause the activity for the given number of milliseconds
 * `pa_run (activity, ...)`: runs the given sub-activity until it returns
-* `pa_return`: end an activity from within its body - otherwise ends at the end
-* `pa_co(n)`: starts a concurrent section - reserve the number of trails with `pa_co_res(num_trails)` in the context of an activity
-* `pa_with (activity, ...)`: runs the given activity concurrently with the others of this section
-* `pa_with_weak (activity, ...)`: runs the given activity concurrently with the others of this section and can be preempted
+* `pa_return`: end an activity from within its body - otherwise returns implicitly at the end
+* `pa_co(n)`: starts a concurrent section with `n` trails - reserve the number of trails with `pa_co_res(num_trails)` in the activities context - end section with `pa_co_end`
+* `pa_with (activity, ...)`: runs the given activity concurrently with the others of this section - only applicable within `pa_co`
+* `pa_with_weak (activity, ...)`: runs the given activity concurrently with the others of this section and can be preempted - only applicable within `pa_co`
 * `pa_when_abort (cond, activity, ...)`: runs the given activity until `cond` becomes true in a subsequent tick - unless it ends before
-* `pa_when_reset (cond, activity, ...)`: runs the given activity and restarts it when `cond` becomes true in a subsequen tick
+* `pa_when_reset (cond, activity, ...)`: runs the given activity and restarts it when `cond` becomes true in a subsequent tick
 * `pa_when_suspend (cond, activity, ...)`: will suspend the given activity while `cond` is true and lets it continue when `cond` is false again
 * `pa_after_abort (ticks, activity, ...)`: will abort the given activity after the specified number of ticks
 * `pa_after_ms_abort (ms, activity, ...)`: will abort the given activity after the specified time in milliseconds
-* `pa_did_abort (activity)`: reports whether an activity was aborted in the call before
-* `pa_always`: will run code on every tick
-* `pa_every (cond)`: will run code everytime `cond` is true
+* `pa_did_abort (activity)`: reports whether an activity was aborted in a call before
+* `pa_always`: will run code on every tick - end block with `pa_always_end`
+* `pa_every (cond)`: will run code everytime `cond` is true - end block with `pa_every_end`
 * `pa_whenever (cond, activity, ...)`: will run the given activity whenever `cond` is true and abort it if `cond` turns false
 
 When compiling wit C++ you could also define the following lifecycle callbacks:
