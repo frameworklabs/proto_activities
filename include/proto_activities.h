@@ -138,7 +138,11 @@ namespace proto_activities {
         pa_wait; \
     }
 
-/* Define like this (Arduino) for your platform: #define pa_get_time_ms millis() */
+#ifdef ARDUINO
+#define pa_get_time_ms millis()
+#else
+/* Define pa_get_time_ms for your platform if you want to use time related constructs */
+#endif
 
 #define pa_delay_ms(ms) \
     pa_self._pa_time = pa_get_time_ms + ms; \
@@ -430,6 +434,14 @@ namespace proto_activities {
 #define pa_every(cond) \
     pa_repeat { \
         pa_await_immediate (cond);
+
+#define pa_every_ms(ms) \
+    pa_self._pa_time = pa_get_time_ms; \
+    pa_repeat { \
+        pa_await_immediate (pa_get_time_ms >= pa_self._pa_time); \
+        pa_self._pa_time += ms;
+
+#define pa_every_s(s) pa_every_ms(s * 1000)
 
 #define pa_every_end \
         pa_pause; \

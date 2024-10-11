@@ -97,6 +97,7 @@ For a detailed description of the statements, please currently refer to the [Ble
 * `pa_did_abort (activity)`: reports whether an activity was aborted in a call before
 * `pa_always`: will run code on every tick - end block with `pa_always_end`
 * `pa_every (cond)`: will run code everytime `cond` is true - end block with `pa_every_end`
+* `pa_every_ms (ms)`: will run code now and every `ms` milliseconds thereafter - end block with `pa_every_end`. Note: Do *not* use any other construct which uses timing (like `pa_delay_ms`) in the enclosed block 
 * `pa_whenever (cond, activity, ...)`: will run the given activity whenever `cond` is true and abort it if `cond` turns false
 
 When compiling wit C++ you could also define the following lifecycle callbacks:

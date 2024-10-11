@@ -531,6 +531,26 @@ pa_activity (TestEverySpec, pa_ctx(), int& value, int& expected) {
     value = 5;
     expected = 10;
     pa_pause;
+    
+    // Test every_ms
+    pa_get_time_ms = 0;
+    value = 0;
+    expected = 1;
+    pa_pause;
+    
+    pa_get_time_ms = 1;
+    pa_pause;
+    
+    pa_get_time_ms = 5;
+    expected = 2;
+    pa_pause;
+
+    pa_get_time_ms = 9;
+    pa_pause;
+
+    value = 1;
+    expected = 10;
+    pa_pause;
 
     // Test whenever
     value = 0;
@@ -560,8 +580,14 @@ pa_activity (TestEveryTestBody, pa_ctx(), bool cond, int value, int& actual) {
     } pa_every_end;
 } pa_end;
 
-pa_activity (TestEveryTest, pa_ctx(pa_use(TestEveryTestBody); pa_use_ns(helpers, CountDown)), int value, int& actual) {
-    
+pa_activity (TestEveryMsTestBody, pa_ctx_tm(), int& actual) {
+    pa_every_ms (5) {
+        ++actual;
+    } pa_every_end;
+} pa_end;
+
+pa_activity (TestEveryTest, pa_ctx_tm(pa_use(TestEveryTestBody); pa_use(TestEveryMsTestBody); pa_use_ns(helpers, CountDown)), int value, int& actual) {
+
     // Test that we don't enter every on false condition.
     pa_when_abort (value == 1, TestEveryTestBody, false, 1, actual);
 
@@ -570,7 +596,12 @@ pa_activity (TestEveryTest, pa_ctx(pa_use(TestEveryTestBody); pa_use_ns(helpers,
 
     // Test that we enter every on alternating conditions
     pa_when_abort (value == 5, TestEveryTestBody, value % 2 == 0, value, actual);
-    
+    actual = 10;
+    pa_pause;
+
+    /* Test every_ms */
+    actual = 0;
+    pa_when_abort (value == 1, TestEveryMsTestBody, actual);
     actual = 10;
     pa_pause;
 
