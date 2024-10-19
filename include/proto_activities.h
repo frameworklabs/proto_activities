@@ -79,7 +79,7 @@ namespace proto_activities {
 #define pa_activity_ctx(nm, ...) \
     struct _pa_frame_name(nm) final : proto_activities::AnyFrame { \
         void reset() final { \
-            *this = {}; \
+            *this = std::move(_pa_frame_name(nm){}); \
         } \
         __VA_ARGS__; \
     };
