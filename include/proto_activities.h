@@ -408,6 +408,8 @@ namespace proto_activities {
 
 #define pa_init(nm) _pa_reset(&_pa_inst_name(nm));
 #define pa_tick(nm, ...) nm(&_pa_inst_name(nm), ##__VA_ARGS__)
+#define pa_tick_local _pa_call
+#define pa_tick_local_as _pa_call_as
 
 /* Convenience */
 
