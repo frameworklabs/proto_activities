@@ -8,8 +8,8 @@
 /* Mode */
 
 /* #define PA_PREFER_C to use C meta model over CPP for smaller code sizes */
-#if defined(__cplusplus) && !defined(PA_PREFER_C)
-#define PA_ENABLE_CPP
+#if defined(__cplusplus) && __has_include(<functional>) && !defined(PA_PREFER_C)
+#define _PA_ENABLE_CPP
 #endif
 
 /* Includes */
@@ -17,7 +17,7 @@
 #include <stdbool.h>
 #include <stdint.h> /* for uint16_t etc. */
 #include <string.h> /* for memset */
-#ifdef PA_ENABLE_CPP
+#ifdef _PA_ENABLE_CPP
 #include <functional> /* for std::function */
 #endif
 
@@ -40,19 +40,21 @@ typedef uint64_t pa_time_t;
 #define _pa_inst_ptr(nm) &(pa_this->_pa_inst_name(nm))
 #define _pa_call(nm, ...) nm(_pa_inst_ptr(nm), ##__VA_ARGS__)
 #define _pa_call_as(nm, alias, ...) nm(_pa_inst_ptr(alias), ##__VA_ARGS__)
-#ifndef PA_ENABLE_CPP
+#ifndef _PA_ENABLE_CPP
 #define _pa_reset(inst) memset(inst, 0, sizeof(*inst));
 #define _pa_abort(inst) _pa_reset(inst); *inst._pa_pc = 0xffff;
+#define _pa_static static
 #else
 #define _pa_reset(inst) (inst)->reset();
 #define _pa_abort(inst) _pa_reset(inst); (inst)->_pa_pc = 0xffff;
+#define _pa_static
 #endif
 
 /* Context */
 
 #define pa_ctx(vars...) vars
 #define pa_ctx_tm(vars...) pa_ctx(pa_time_t _pa_time; vars)
-#ifndef PA_ENABLE_CPP
+#ifndef _PA_ENABLE_CPP
 #define pa_use(nm) _pa_frame_type(nm) _pa_inst_name(nm);
 #define pa_use_as(nm, alias) _pa_frame_type(nm) _pa_inst_name(alias);
 #else
@@ -67,9 +69,9 @@ typedef uint64_t pa_time_t;
 
 #define pa_activity(nm, ctx, ...) \
     pa_activity_ctx(nm, ctx); \
-    static pa_activity_def(nm, ##__VA_ARGS__)
+    _pa_static pa_activity_def(nm, ##__VA_ARGS__)
 
-#ifndef PA_ENABLE_CPP
+#ifndef _PA_ENABLE_CPP
 #define pa_activity_ctx(nm, ...) \
     struct _pa_frame_name(nm) { \
         pa_pc_t _pa_pc; \
@@ -179,7 +181,7 @@ namespace proto_activities {
 #define pa_co_res(n) \
     pa_rc_t _pa_co_rcs[n];
 
-#ifndef PA_ENABLE_CPP
+#ifndef _PA_ENABLE_CPP
 
 #define _pa_co_def(n) \
     struct { \
@@ -347,7 +349,7 @@ namespace proto_activities {
 
 /* Lifecycle */
 
-#ifndef PA_ENABLE_CPP
+#ifndef _PA_ENABLE_CPP
 
 #define _pa_susres_suspend(alias)
 #define _pa_susres_resume(alias)
