@@ -1,0 +1,8 @@
+{
+  "name": "proto_activities",
+  "build": {
+    "srcDir": ".",
+    "srcFilter": "-<*>"
+  }
+}
+

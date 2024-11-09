@@ -9,6 +9,7 @@
 
 /* Gobals */
 
+#undef pa_get_time_ms
 static pa_time_t pa_get_time_ms;
 
 /* Helpers */

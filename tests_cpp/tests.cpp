@@ -10,7 +10,10 @@
 // Gobals
 
 namespace {
-    pa_time_t pa_get_time_ms;
+
+#undef pa_get_time_ms
+pa_time_t pa_get_time_ms;
+
 }
 
 // Helpers
