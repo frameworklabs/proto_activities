@@ -94,6 +94,8 @@ namespace proto_activities {
     };
 #endif
 
+#define pa_activity_ctx_tm(nm, vars...) pa_activity_ctx(nm, pa_ctx_tm(vars))
+
 #define pa_activity_def(nm, ...) \
     pa_rc_t nm(_pa_frame_type(nm)* pa_this, ##__VA_ARGS__) { \
         switch (pa_this->_pa_pc) { \
