@@ -25,7 +25,7 @@
 
 typedef uint16_t pa_pc_t;
 typedef int8_t pa_rc_t;
-typedef uint64_t pa_time_t;
+typedef uint32_t pa_time_t;
 
 /* Constants */
 
@@ -88,7 +88,7 @@ namespace proto_activities {
 #define pa_activity_ctx(nm, ...) \
     struct _pa_frame_name(nm) final : proto_activities::AnyFrame { \
         void reset() final { \
-            *this = std::move(_pa_frame_name(nm){}); \
+            *this = _pa_frame_name(nm){}; \
         } \
         __VA_ARGS__; \
     };
@@ -150,15 +150,15 @@ namespace proto_activities {
     }
 
 #ifdef ARDUINO
-#define pa_get_time_ms millis()
+#define pa_get_time_ms (pa_time_t)(millis())
 #else
 /* Define pa_get_time_ms for your platform if you want to use time related constructs */
 #endif
 
 #define pa_delay_ms(ms) \
-    pa_self._pa_time = pa_get_time_ms + ms; \
+    pa_self._pa_time = pa_get_time_ms; \
     pa_mark_and_continue; \
-    if (pa_get_time_ms < pa_self._pa_time) { \
+    if (pa_get_time_ms - pa_self._pa_time < ms) { \
         pa_wait; \
     }
 
@@ -340,8 +340,8 @@ namespace proto_activities {
 #define pa_after_abort_as(ticks, nm, alias, ...) _pa_after_abort_templ(ticks, nm, alias, _pa_call_as(nm, alias, ##__VA_ARGS__))
 
 #define _pa_after_ms_abort_templ(ms, nm, alias, call) \
-    pa_self._pa_time = pa_get_time_ms + ms; \
-    _pa_when_abort_templ(pa_get_time_ms >= pa_self._pa_time, nm, alias, call);
+    pa_self._pa_time = pa_get_time_ms; \
+    _pa_when_abort_templ(pa_get_time_ms - pa_self._pa_time >= ms, nm, alias, call);
 
 #define pa_after_ms_abort(ms, nm, ...) _pa_after_ms_abort_templ(ms, nm, nm, _pa_call(nm, ##__VA_ARGS__))
 #define pa_after_ms_abort_as(ms, nm, alias, ...) _pa_after_ms_abort_templ(ms, nm, alias, _pa_call_as(nm, alias, ##__VA_ARGS__))
@@ -449,9 +449,9 @@ namespace proto_activities {
         pa_await_immediate (cond);
 
 #define pa_every_ms(ms) \
-    pa_self._pa_time = pa_get_time_ms; \
+    pa_self._pa_time = pa_get_time_ms - ms; \
     pa_repeat { \
-        pa_await_immediate (pa_get_time_ms >= pa_self._pa_time); \
+        pa_await_immediate (pa_get_time_ms - pa_self._pa_time >= ms); \
         pa_self._pa_time += ms;
 
 #define pa_every_s(s) pa_every_ms(s * 1000)

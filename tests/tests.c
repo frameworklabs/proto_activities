@@ -100,6 +100,15 @@ pa_activity (TestDelaySpec, pa_ctx(), int* value, int* expected) {
     pa_get_time_ms = 11;
     *expected = 9;
     pa_pause;
+
+    *expected = 10;
+    pa_get_time_ms = -3;
+    pa_pause;
+    pa_get_time_ms = 0;
+    pa_pause;
+    *expected = 11;
+    pa_get_time_ms = 2;
+    pa_pause;
 } pa_end;
 
 pa_activity (TestDelayTest, pa_ctx_tm(), int value, int* actual) {
@@ -123,6 +132,12 @@ pa_activity (TestDelayTest, pa_ctx_tm(), int value, int* actual) {
     *actual = 8;
     pa_delay_ms (0);
     *actual = 9;
+    pa_pause;
+
+    /* test overflow */
+    *actual = 10;
+    pa_delay_ms(5);
+    *actual = 11;
     pa_pause;
 } pa_end;
 
