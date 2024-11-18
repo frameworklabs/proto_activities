@@ -9,8 +9,7 @@
 
 /* Gobals */
 
-#undef pa_get_time_ms
-static pa_time_t pa_get_time_ms;
+__thread pa_time_t pa_current_time_ms;
 
 /* Helpers */
 
@@ -89,25 +88,25 @@ pa_activity (TestDelaySpec, pa_ctx(), int* value, int* expected) {
     *expected = 5;
     pa_pause;
 
-    pa_get_time_ms = 0;
+    pa_current_time_ms = 0;
     *expected = 6;
     pa_pause;
-    pa_get_time_ms = 9;
+    pa_current_time_ms = 9;
     pa_pause;
-    pa_get_time_ms = 10;
+    pa_current_time_ms = 10;
     *expected = 7;
     pa_pause;
-    pa_get_time_ms = 11;
+    pa_current_time_ms = 11;
     *expected = 9;
     pa_pause;
 
     *expected = 10;
-    pa_get_time_ms = -3;
+    pa_current_time_ms = -3;
     pa_pause;
-    pa_get_time_ms = 0;
+    pa_current_time_ms = 0;
     pa_pause;
     *expected = 11;
-    pa_get_time_ms = 2;
+    pa_current_time_ms = 2;
     pa_pause;
 } pa_end;
 
@@ -346,13 +345,13 @@ pa_activity (TestWhenAbortSpec, pa_ctx(), int* value, int* expected) {
     pa_pause;
 
     /* Test after ms abort. */
-    pa_get_time_ms = 0;
+    pa_current_time_ms = 0;
     *expected = 0;
     pa_pause;
-    pa_get_time_ms = 9;
+    pa_current_time_ms = 9;
     *expected = 1;
     pa_pause;
-    pa_get_time_ms = 10;
+    pa_current_time_ms = 10;
     *expected = -2;
     pa_pause;
 
@@ -535,19 +534,19 @@ pa_activity (TestEverySpec, pa_ctx(), int* value, int* expected) {
     pa_pause;
     
     /* Test every_ms */
-    pa_get_time_ms = 0;
+    pa_current_time_ms = 0;
     *value = 0;
     *expected = 1;
     pa_pause;
     
-    pa_get_time_ms = 1;
+    pa_current_time_ms = 1;
     pa_pause;
     
-    pa_get_time_ms = 5;
+    pa_current_time_ms = 5;
     *expected = 2;
     pa_pause;
 
-    pa_get_time_ms = 9;
+    pa_current_time_ms = 9;
     pa_pause;
 
     *value = 1;
