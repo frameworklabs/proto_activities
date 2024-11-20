@@ -420,17 +420,17 @@ namespace proto_activities {
 _pa_has_field_definer(_pa_susres);
 namespace proto_activities {
     template <typename T>
-    auto invoke_suspend(T* frame) -> typename std::enable_if_t<has_field__pa_susres<T>::value> {
+    auto invoke_suspend(T* frame) -> typename std::enable_if<has_field__pa_susres<T>::value>::type {
         frame->_pa_susres.suspend();
     }
     template <typename T>
-    auto invoke_suspend(T* frame) -> typename std::enable_if_t<!has_field__pa_susres<T>::value> {}
+    auto invoke_suspend(T* frame) -> typename std::enable_if<!has_field__pa_susres<T>::value>::type {}
     template <typename T>
-    auto invoke_resume(T* frame) -> typename std::enable_if_t<has_field__pa_susres<T>::value> {
+    auto invoke_resume(T* frame) -> typename std::enable_if<has_field__pa_susres<T>::value>::type {
         frame->_pa_susres.resume();
     }
     template <typename T>
-    auto invoke_resume(T* frame) -> typename std::enable_if_t<!has_field__pa_susres<T>::value> {}
+    auto invoke_resume(T* frame) -> typename std::enable_if<!has_field__pa_susres<T>::value>::type {}
 }
 #define _pa_susres_suspend(nm, alias) proto_activities::invoke_suspend<_pa_frame_name(nm)>(_pa_inst_ptr(alias));
 #define _pa_susres_resume(nm, alias) proto_activities::invoke_resume<_pa_frame_name(nm)>(_pa_inst_ptr(alias));
