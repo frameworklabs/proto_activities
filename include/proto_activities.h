@@ -19,6 +19,7 @@
 #include <string.h> /* for memset */
 #ifdef _PA_ENABLE_CPP
 #include <functional> /* for std::function */
+#include <type_traits> /* for std::true_type, std::void_t, std::enable_if etc. */
 #endif
 
 /* Types */
@@ -56,6 +57,14 @@ extern __thread pa_time_t pa_current_time_ms;
 #define _pa_abort(inst) _pa_reset(inst); (inst)->_pa_pc = 0xffff;
 #define _pa_static
 #define _pa_extern
+
+#define _pa_has_field_definer(field) \
+    namespace proto_activities { \
+        template <typename T, typename = void> \
+        struct has_field_##field : std::false_type {}; \
+        template <typename T> \
+        struct has_field_##field<T, std::void_t<decltype(std::declval<T>().field)>> : std::true_type {}; \
+    }
 #endif
 
 /* Context */
@@ -321,12 +330,12 @@ namespace proto_activities {
     if (call == PA_RC_WAIT) { \
         pa_mark_and_wait \
         if (!(cond)) { \
-            _pa_susres_resume(alias); \
+            _pa_susres_resume(nm, alias); \
             if (call == PA_RC_WAIT) { \
                 pa_wait; \
             } \
         } else { \
-            _pa_susres_suspend(alias); \
+            _pa_susres_suspend(nm, alias); \
             pa_wait; \
         } \
     }
@@ -355,8 +364,8 @@ namespace proto_activities {
 
 #ifndef _PA_ENABLE_CPP
 
-#define _pa_susres_suspend(alias)
-#define _pa_susres_resume(alias)
+#define _pa_susres_suspend(nm, alias)
+#define _pa_susres_resume(nm, alias)
 
 #else
 
@@ -408,12 +417,27 @@ namespace proto_activities {
 #define pa_defer_res proto_activities::Defer _pa_defer{};
 #define pa_defer pa_self._pa_defer.thunk = [=]()
 
-#define _pa_susres_suspend(alias) (_pa_inst_ptr(alias))->_pa_susres.suspend();
-#define _pa_susres_resume(alias) (_pa_inst_ptr(alias))->_pa_susres.resume();
+_pa_has_field_definer(_pa_susres);
+namespace proto_activities {
+    template <typename T>
+    auto invoke_suspend(T* frame) -> typename std::enable_if_t<has_field__pa_susres<T>::value> {
+        frame->_pa_susres.suspend();
+    }
+    template <typename T>
+    auto invoke_suspend(T* frame) -> typename std::enable_if_t<!has_field__pa_susres<T>::value> {}
+    template <typename T>
+    auto invoke_resume(T* frame) -> typename std::enable_if_t<has_field__pa_susres<T>::value> {
+        frame->_pa_susres.resume();
+    }
+    template <typename T>
+    auto invoke_resume(T* frame) -> typename std::enable_if_t<!has_field__pa_susres<T>::value> {}
+}
+#define _pa_susres_suspend(nm, alias) proto_activities::invoke_suspend<_pa_frame_name(nm)>(_pa_inst_ptr(alias));
+#define _pa_susres_resume(nm, alias) proto_activities::invoke_resume<_pa_frame_name(nm)>(_pa_inst_ptr(alias));
 
 #define pa_susres_res proto_activities::SusRes _pa_susres{};
-#define pa_suspend pa_self._pa_susres.sus_thunk = [=]()
-#define pa_resume pa_self._pa_susres.res_thunk = [=]()
+#define pa_suspend pa_self._pa_susres.sus_thunk = [&]()
+#define pa_resume pa_self._pa_susres.res_thunk = [&]()
 
 #endif
 

@@ -677,6 +677,10 @@ pa_activity (TestLifecycleSusResAct, pa_ctx(pa_susres_res)) {
     pa_halt;
 } pa_end
 
+pa_activity (TestLifecycleNoSusResAct, pa_ctx()) {
+    // empty
+} pa_end
+
 pa_activity (TestLifecycleSusResSpec, pa_ctx(), bool& suspend) {
     suspend = false;
     pa_pause;
@@ -687,8 +691,9 @@ pa_activity (TestLifecycleSusResSpec, pa_ctx(), bool& suspend) {
     pa_pause;
 } pa_end
 
-pa_activity (TestLifecycleSusResBody, pa_ctx(pa_use(TestLifecycleSusResAct)), bool suspend) {
+pa_activity (TestLifecycleSusResBody, pa_ctx(pa_use(TestLifecycleSusResAct); pa_use(TestLifecycleNoSusResAct)), bool suspend) {
     pa_when_suspend (suspend, TestLifecycleSusResAct);
+    pa_when_suspend (suspend, TestLifecycleNoSusResAct);
 } pa_end
 
 pa_activity (TestLifecycleBody, pa_ctx_tm(pa_co_res(2); bool suspend = false;
