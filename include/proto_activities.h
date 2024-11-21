@@ -57,7 +57,6 @@ extern __thread pa_time_t pa_current_time_ms;
 #define _pa_abort(inst) _pa_reset(inst); (inst)->_pa_pc = 0xffff;
 #define _pa_static
 #define _pa_extern
-
 #define _pa_has_field_definer(field) \
     namespace proto_activities { \
         template <typename T, typename = void> \
@@ -65,6 +64,7 @@ extern __thread pa_time_t pa_current_time_ms;
         template <typename T> \
         struct has_field_##field<T, std::void_t<decltype(std::declval<T>().field)>> : std::true_type {}; \
     }
+#define _pa_has_field(ty, field) proto_activities::has_field_##field<ty>::value
 #endif
 
 /* Context */
@@ -115,6 +115,7 @@ namespace proto_activities {
 
 #define pa_activity_def(nm, ...) \
     pa_rc_t nm(_pa_frame_type(nm)* pa_this, ##__VA_ARGS__) { \
+        _pa_enter_invoke(_pa_frame_name(nm)); \
         switch (pa_this->_pa_pc) { \
             case 0: \
             case 0xffff:
@@ -330,12 +331,12 @@ namespace proto_activities {
     if (call == PA_RC_WAIT) { \
         pa_mark_and_wait \
         if (!(cond)) { \
-            _pa_susres_resume(nm, alias); \
+            _pa_susres_resume(_pa_frame_name(nm), alias); \
             if (call == PA_RC_WAIT) { \
                 pa_wait; \
             } \
         } else { \
-            _pa_susres_suspend(nm, alias); \
+            _pa_susres_suspend(_pa_frame_name(nm), alias); \
             pa_wait; \
         } \
     }
@@ -366,6 +367,7 @@ namespace proto_activities {
 
 #define _pa_susres_suspend(nm, alias)
 #define _pa_susres_resume(nm, alias)
+#define _pa_enter_invoke(ty)
 
 #else
 
@@ -412,6 +414,24 @@ namespace proto_activities {
         Thunk res_thunk;
         bool did_suspend{};
     };
+
+    struct Enter {
+        Enter& operator=(const Enter& other) {
+            thunk = nullptr;
+            return *this;
+        }
+        Enter& operator=(Thunk&& thunk_) {
+            thunk = std::move(thunk_);
+            thunk();
+            return *this;
+        }
+        void invoke() {
+            if (thunk) {
+                thunk();
+            }
+        }
+        Thunk thunk;
+    };
 }
 
 #define pa_defer_res proto_activities::Defer _pa_defer{};
@@ -420,24 +440,41 @@ namespace proto_activities {
 _pa_has_field_definer(_pa_susres);
 namespace proto_activities {
     template <typename T>
-    auto invoke_suspend(T* frame) -> typename std::enable_if<has_field__pa_susres<T>::value>::type {
+    auto invoke_suspend(T* frame) -> typename std::enable_if<_pa_has_field(T, _pa_susres)>::type {
         frame->_pa_susres.suspend();
     }
     template <typename T>
-    auto invoke_suspend(T* frame) -> typename std::enable_if<!has_field__pa_susres<T>::value>::type {}
+    auto invoke_suspend(T* frame) -> typename std::enable_if<!_pa_has_field(T, _pa_susres)>::type {}
     template <typename T>
-    auto invoke_resume(T* frame) -> typename std::enable_if<has_field__pa_susres<T>::value>::type {
+    auto invoke_resume(T* frame) -> typename std::enable_if<_pa_has_field(T, _pa_susres)>::type {
         frame->_pa_susres.resume();
     }
     template <typename T>
-    auto invoke_resume(T* frame) -> typename std::enable_if<!has_field__pa_susres<T>::value>::type {}
+    auto invoke_resume(T* frame) -> typename std::enable_if<!_pa_has_field(T, _pa_susres)>::type {}
 }
-#define _pa_susres_suspend(nm, alias) proto_activities::invoke_suspend<_pa_frame_name(nm)>(_pa_inst_ptr(alias));
-#define _pa_susres_resume(nm, alias) proto_activities::invoke_resume<_pa_frame_name(nm)>(_pa_inst_ptr(alias));
+#define _pa_susres_suspend(ty, alias) \
+    if constexpr (_pa_has_field(ty, _pa_susres)) { proto_activities::invoke_suspend<ty>(_pa_inst_ptr(alias)); }
+#define _pa_susres_resume(ty, alias) \
+    if constexpr (_pa_has_field(ty, _pa_susres)) { proto_activities::invoke_resume<ty>(_pa_inst_ptr(alias)); }
 
 #define pa_susres_res proto_activities::SusRes _pa_susres{};
 #define pa_suspend pa_self._pa_susres.sus_thunk = [&]()
 #define pa_resume pa_self._pa_susres.res_thunk = [&]()
+
+_pa_has_field_definer(_pa_enter);
+namespace proto_activities {
+    template <typename T>
+    auto invoke_enter(T& frame) -> typename std::enable_if<_pa_has_field(T, _pa_enter)>::type {
+        frame._pa_enter.invoke();
+    }
+    template <typename T>
+    auto invoke_enter(T& frame) -> typename std::enable_if<!_pa_has_field(T, _pa_enter)>::type {}
+}
+#define _pa_enter_invoke(ty) \
+    if constexpr (_pa_has_field(ty, _pa_enter)) { proto_activities::invoke_enter<ty>(pa_self); }
+
+#define pa_enter_res proto_activities::Enter _pa_enter{};
+#define pa_enter pa_self._pa_enter = [&]()
 
 #endif
 

@@ -646,6 +646,8 @@ namespace {
     bool did_defer = false;
     int suspend_count = 0;
     int resume_count = 0;
+    int enter_count = 0;
+    bool done = false;
 }
 
 pa_activity (TestLifecycleDeferAct, pa_ctx(pa_defer_res), bool await) {
@@ -696,12 +698,21 @@ pa_activity (TestLifecycleSusResBody, pa_ctx(pa_use(TestLifecycleSusResAct); pa_
     pa_when_suspend (suspend, TestLifecycleNoSusResAct);
 } pa_end
 
+pa_activity (TestLifecycleEnterAct, pa_ctx(pa_enter_res)) {
+    pa_enter {
+        ++enter_count;
+    };
+    pa_pause;
+    pa_pause;
+} pa_end
+
 pa_activity (TestLifecycleBody, pa_ctx_tm(pa_co_res(2); bool suspend = false;
                                           pa_use(TestLifecycleDeferAct);
                                           pa_use(TestLifecycleDeferActInRun);
                                           pa_use(TestLifecycleDeferActInCo);
                                           pa_use(TestLifecycleSusResSpec);
-                                          pa_use(TestLifecycleSusResBody))) {
+                                          pa_use(TestLifecycleSusResBody);
+                                          pa_use(TestLifecycleEnterAct))) {
     pa_run (TestLifecycleDeferAct, true);
     pa_pause;
     pa_after_abort(2, TestLifecycleDeferAct, false);
@@ -722,6 +733,9 @@ pa_activity (TestLifecycleBody, pa_ctx_tm(pa_co_res(2); bool suspend = false;
         pa_with_weak (TestLifecycleSusResBody, pa_self.suspend);
     } pa_co_end
 
+    pa_run (TestLifecycleEnterAct);
+
+    done = true;
 } pa_end
 
 pa_activity (TestLifecycleTest, pa_ctx()) {
@@ -770,6 +784,15 @@ pa_activity (TestLifecycleTest, pa_ctx()) {
     assert(suspend_count == 1);
     assert(resume_count == 1);
     pa_pause;
+
+    assert(enter_count == 1);
+    pa_pause;
+    assert(enter_count == 2);
+    pa_pause;
+    assert(enter_count == 3);
+    pa_pause;
+
+    assert(done);
 } pa_end
 
 pa_activity (TestLifecycle, pa_ctx(pa_co_res(2); pa_use(TestLifecycleBody); pa_use(TestLifecycleTest))) {
