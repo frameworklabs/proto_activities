@@ -416,6 +416,12 @@ namespace proto_activities {
         bool did_suspend{};
     };
 
+    struct Updatable {
+        virtual ~Updatable() = default;
+        virtual void update() = 0;
+        Updatable* next{};
+    };
+
     struct Enter {
         Enter& operator=(const Enter& other) {
             thunk = nullptr;
@@ -426,12 +432,20 @@ namespace proto_activities {
             thunk();
             return *this;
         }
+        void add(Updatable* updatable) {
+            updatable->next = head;
+            head = updatable;
+        }
         void invoke() {
+            for (auto* updatable = head; updatable != nullptr; updatable = updatable->next) {
+                updatable->update();
+            }
             if (thunk) {
                 thunk();
             }
         }
         Thunk thunk;
+        Updatable* head{};
     };
 }
 
@@ -484,6 +498,39 @@ namespace proto_activities {
 
 #define pa_enter_res proto_activities::Enter _pa_enter{};
 #define pa_enter pa_self._pa_enter = [&]()
+
+#endif
+
+/* Signals */
+
+#ifdef __cplusplus
+namespace proto_activities {
+    struct BoolSignal final : Updatable {
+        BoolSignal(Enter& enter) {
+            enter.add(this);
+        }
+        BoolSignal(const BoolSignal&) = delete;
+        BoolSignal& operator=(const BoolSignal&) {
+            value_ = false;
+            return *this;
+        }
+        void emit() {
+            value_ = true;
+        }
+        operator bool() const {
+            return value_;
+        }
+        void update() final {
+            value_ = false;
+        }
+    private:
+        bool value_;
+    };
+}
+using pa_signal = proto_activities::BoolSignal;
+
+#define pa_def_signal(nm) pa_signal nm{_pa_enter};
+#define pa_emit(sig) sig.emit();
 
 #endif
 

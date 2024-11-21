@@ -640,7 +640,7 @@ pa_activity (TestEvery, pa_ctx(pa_co_res(4); int value; int actual; int expected
     } pa_co_end;
 } pa_end;
 
-// Test Lifecycle
+// Lifecycle Tests
 
 namespace {
     bool did_defer = false;
@@ -802,6 +802,44 @@ pa_activity (TestLifecycle, pa_ctx(pa_co_res(2); pa_use(TestLifecycleBody); pa_u
     } pa_co_end
 } pa_end
 
+// Signal Tests
+
+pa_activity (TestSignalsBodySub, pa_ctx(), pa_signal& s1, pa_signal& s2) {
+    assert(!s1); assert(!s2);
+    pa_pause;
+
+    assert(!s1); assert(!s2);
+    pa_emit(s1); pa_emit(s2);
+    assert(s1); assert(s2);
+    pa_pause;
+
+    assert(!s1); assert(!s2);
+    pa_pause;
+} pa_end
+
+pa_activity (TestSignalsBody, pa_ctx(pa_enter_res; pa_use(TestSignalsBodySub);
+                                     pa_def_signal(s1); pa_def_signal(s2))) {
+    assert(!pa_self.s1); assert(!pa_self.s2);
+    pa_pause;
+
+    assert(!pa_self.s1); assert(!pa_self.s2);
+    pa_emit(pa_self.s1); pa_emit(pa_self.s2);
+    assert(pa_self.s1); assert(pa_self.s2);
+    pa_pause;
+
+    assert(!pa_self.s1); assert(!pa_self.s2);
+    pa_pause;
+
+    pa_run(TestSignalsBodySub, pa_self.s1, pa_self.s1);
+} pa_end
+
+pa_activity (TestSignals, pa_ctx_tm(pa_use(TestSignalsBody))) {
+    pa_run (TestSignalsBody);
+    pa_run (TestSignalsBody); // Test re-invocation
+    pa_after_abort (2, TestSignalsBody);
+    pa_run (TestSignalsBody); // Test re-invocation after abort
+} pa_end
+
 } // namespace tests
 
 // Test Driver
@@ -822,6 +860,7 @@ int main(int argc, char* argv[]) {
     run_test(tests, TestWhenReset);
     run_test(tests, TestEvery);
     run_test(tests, TestLifecycle);
+    run_test(tests, TestSignals);
 
     std::cout << "Done" << std::endl;
 
