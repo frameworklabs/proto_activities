@@ -453,8 +453,15 @@ namespace proto_activities {
     template <typename T>
     auto invoke_resume(T* frame) -> typename std::enable_if<!_pa_has_field(T, _pa_susres)>::type {}
 }
+#if __cplusplus >= 201703L
+#define _pa_susres_suspend(ty, alias) \
+    if constexpr (_pa_has_field(ty, _pa_susres)) { proto_activities::invoke_suspend<ty>(_pa_inst_ptr(alias)); }
+#define _pa_susres_resume(ty, alias) \
+    if constexpr (_pa_has_field(ty, _pa_susres)) { proto_activities::invoke_resume<ty>(_pa_inst_ptr(alias)); }
+#else
 #define _pa_susres_suspend(ty, alias) proto_activities::invoke_suspend<ty>(_pa_inst_ptr(alias));
 #define _pa_susres_resume(ty, alias) proto_activities::invoke_resume<ty>(_pa_inst_ptr(alias));
+#endif
 
 #define pa_susres_res proto_activities::SusRes _pa_susres{};
 #define pa_suspend pa_self._pa_susres.sus_thunk = [&]()
@@ -469,7 +476,11 @@ namespace proto_activities {
     template <typename T>
     auto invoke_enter(T& frame) -> typename std::enable_if<!_pa_has_field(T, _pa_enter)>::type {}
 }
+#if __cplusplus >= 201703L
+#define _pa_enter_invoke(ty) if constexpr (_pa_has_field(ty, _pa_enter)) { proto_activities::invoke_enter<ty>(pa_self); }
+#else
 #define _pa_enter_invoke(ty) proto_activities::invoke_enter<ty>(pa_self);
+#endif
 
 #define pa_enter_res proto_activities::Enter _pa_enter{};
 #define pa_enter pa_self._pa_enter = [&]()
