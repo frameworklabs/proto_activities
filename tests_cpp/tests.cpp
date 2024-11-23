@@ -804,7 +804,7 @@ pa_activity (TestLifecycle, pa_ctx(pa_co_res(2); pa_use(TestLifecycleBody); pa_u
 
 // Signal Tests
 
-pa_activity (TestSignalsBodySub, pa_ctx(), pa_signal& s1, pa_signal& s2) {
+pa_activity (TestSignalsBodySub, pa_ctx(), pa_sig& s1, pa_sig& s2) {
     assert(!s1); assert(!s2);
     pa_pause;
 
@@ -817,8 +817,8 @@ pa_activity (TestSignalsBodySub, pa_ctx(), pa_signal& s1, pa_signal& s2) {
     pa_pause;
 } pa_end
 
-pa_activity (TestSignalsBody, pa_ctx(pa_enter_res; pa_use(TestSignalsBodySub);
-                                     pa_def_signal(s1); pa_def_signal(s2))) {
+pa_activity (TestSignalsBody, pa_ctx(pa_sig_res; pa_use(TestSignalsBodySub);
+                                     pa_def_sig(s1); pa_def_sig(s2))) {
     assert(!pa_self.s1); assert(!pa_self.s2);
     pa_pause;
 
@@ -830,7 +830,7 @@ pa_activity (TestSignalsBody, pa_ctx(pa_enter_res; pa_use(TestSignalsBodySub);
     assert(!pa_self.s1); assert(!pa_self.s2);
     pa_pause;
 
-    pa_run(TestSignalsBodySub, pa_self.s1, pa_self.s1);
+    pa_run(TestSignalsBodySub, pa_self.s1, pa_self.s2);
 } pa_end
 
 pa_activity (TestSignals, pa_ctx_tm(pa_use(TestSignalsBody))) {
@@ -839,6 +839,48 @@ pa_activity (TestSignals, pa_ctx_tm(pa_use(TestSignalsBody))) {
     pa_after_abort (2, TestSignalsBody);
     pa_run (TestSignalsBody); // Test re-invocation after abort
 } pa_end
+
+#if __cplusplus >= 201703L
+
+pa_activity (TestValSignalsBodySub, pa_ctx(), pa_val_sig<int>& s1, pa_val_sig<float>& s2) {
+    assert(!s1); assert(!s2);
+    pa_pause;
+
+    assert(!s1); assert(!s2);
+    pa_emit_val(s1, 42); pa_emit_val(s2, 3.14f);
+    assert(s1); assert(s2);
+    assert(s1.val() == 42); assert(s2.val() != 0.0f);
+    pa_pause;
+
+    assert(!s1); assert(!s2);
+    pa_pause;
+} pa_end
+
+pa_activity (TestValSignalsBody, pa_ctx(pa_sig_res; pa_use(TestValSignalsBodySub);
+                                        pa_def_val_sig(int, s1); pa_def_val_sig(float, s2))) {
+    assert(!pa_self.s1); assert(!pa_self.s2);
+    pa_pause;
+
+    assert(!pa_self.s1); assert(!pa_self.s2);
+    pa_emit_val(pa_self.s1, 42); pa_emit_val(pa_self.s2, 3.14f);
+    assert(pa_self.s1); assert(pa_self.s2);
+    assert(pa_self.s1.val() == 42); assert(pa_self.s2.val() != 0.0f);
+    pa_pause;
+
+    assert(!pa_self.s1); assert(!pa_self.s2);
+    pa_pause;
+
+    pa_run(TestValSignalsBodySub, pa_self.s1, pa_self.s2);
+} pa_end
+
+pa_activity (TestValSignals, pa_ctx_tm(pa_use(TestValSignalsBody))) {
+    pa_run (TestValSignalsBody);
+    pa_run (TestValSignalsBody); // Test re-invocation
+    pa_after_abort (2, TestValSignalsBody);
+    pa_run (TestValSignalsBody); // Test re-invocation after abort
+} pa_end
+
+#endif
 
 } // namespace tests
 
@@ -861,6 +903,9 @@ int main(int argc, char* argv[]) {
     run_test(tests, TestEvery);
     run_test(tests, TestLifecycle);
     run_test(tests, TestSignals);
+#if __cplusplus >= 201703L
+    run_test(tests, TestValSignals);
+#endif
 
     std::cout << "Done" << std::endl;
 

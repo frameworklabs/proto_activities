@@ -20,6 +20,9 @@
 #ifdef _PA_ENABLE_CPP
 #include <functional> /* for std::function */
 #include <type_traits> /* for std::true_type, std::void_t, std::enable_if etc. */
+#if __cplusplus >= 201703L
+#include <optional>
+#endif
 #endif
 
 /* Types */
@@ -503,14 +506,15 @@ namespace proto_activities {
 
 /* Signals */
 
-#ifdef __cplusplus
+#ifdef _PA_ENABLE_CPP
+
 namespace proto_activities {
-    struct BoolSignal final : Updatable {
-        BoolSignal(Enter& enter) {
+    struct Signal final : Updatable {
+        Signal(Enter& enter) {
             enter.add(this);
         }
-        BoolSignal(const BoolSignal&) = delete;
-        BoolSignal& operator=(const BoolSignal&) {
+        Signal(const Signal&) = delete;
+        Signal& operator=(const Signal&) {
             value_ = false;
             return *this;
         }
@@ -526,11 +530,46 @@ namespace proto_activities {
     private:
         bool value_;
     };
+#if __cplusplus >= 201703L
+    template <typename T>
+    struct ValSignal final : Updatable {
+        ValSignal(Enter& enter) {
+            enter.add(this);
+        }
+        ValSignal(const ValSignal&) = delete;
+        ValSignal& operator=(const ValSignal&) {
+            value_.reset();
+            return *this;
+        }
+        void emit(T&& t) {
+            value_.emplace(std::move(t));
+        }
+        operator bool() const {
+            return value_.has_value();
+        }
+        const T& val() const {
+            return *value_;
+        }
+        void update() final {
+            value_.reset();
+        }
+    private:
+        std::optional<T> value_;
+    };
+#endif
 }
-using pa_signal = proto_activities::BoolSignal;
 
-#define pa_def_signal(nm) pa_signal nm{_pa_enter};
+using pa_sig = proto_activities::Signal;
+#define pa_sig_res pa_enter_res
+#define pa_def_sig(nm) pa_sig nm{_pa_enter};
 #define pa_emit(sig) sig.emit();
+
+#if __cplusplus >= 201703L
+template <typename T>
+using pa_val_sig = proto_activities::ValSignal<T>;
+#define pa_def_val_sig(ty, nm) pa_val_sig<ty> nm{_pa_enter};
+#define pa_emit_val(sig, val) sig.emit(val);
+#endif
 
 #endif
 
