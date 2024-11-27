@@ -31,12 +31,6 @@ typedef uint16_t pa_pc_t;
 typedef int8_t pa_rc_t;
 typedef uint32_t pa_time_t;
 
-/* Externals */
-
-/* When unsing time features, use the following macro to define the current time variable */
-#define pa_define_current_time_var __thread pa_time_t pa_current_time_ms;
-extern __thread pa_time_t pa_current_time_ms;
-
 /* Constants */
 
 #define PA_RC_WAIT ((pa_rc_t)-1)
@@ -48,8 +42,8 @@ extern __thread pa_time_t pa_current_time_ms;
 #define _pa_frame_type(nm) struct _pa_frame_name(nm)
 #define _pa_inst_name(nm) nm##_inst
 #define _pa_inst_ptr(nm) &(pa_this->_pa_inst_name(nm))
-#define _pa_call(nm, ...) nm(_pa_inst_ptr(nm), ##__VA_ARGS__)
-#define _pa_call_as(nm, alias, ...) nm(_pa_inst_ptr(alias), ##__VA_ARGS__)
+#define _pa_call(nm, ...) nm(_pa_inst_ptr(nm), pa_current_time_ms, ##__VA_ARGS__)
+#define _pa_call_as(nm, alias, ...) nm(_pa_inst_ptr(alias), pa_current_time_ms, ##__VA_ARGS__)
 #ifndef _PA_ENABLE_CPP
 #define _pa_reset(inst) memset(inst, 0, sizeof(*inst));
 #define _pa_abort(inst) _pa_reset(inst); *inst._pa_pc = 0xffff;
@@ -118,7 +112,7 @@ namespace proto_activities {
 #define pa_activity_ctx_tm(nm, vars...) pa_activity_ctx(nm, pa_ctx_tm(vars))
 
 #define pa_activity_def(nm, ...) \
-    pa_rc_t nm(_pa_frame_type(nm)* pa_this, ##__VA_ARGS__) { \
+    pa_rc_t nm(_pa_frame_type(nm)* pa_this, pa_time_t pa_current_time_ms, ##__VA_ARGS__) { \
         _pa_enter_invoke(_pa_frame_name(nm)); \
         switch (pa_this->_pa_pc) { \
             case 0: \
@@ -130,7 +124,7 @@ namespace proto_activities {
     }
 
 #define pa_activity_sig(nm, ...) \
-    _pa_extern pa_rc_t nm(_pa_frame_type(nm)* pa_this, ##__VA_ARGS__);
+    _pa_extern pa_rc_t nm(_pa_frame_type(nm)* pa_this, pa_time_t pa_current_time_ms, ##__VA_ARGS__);
 
 #define pa_activity_decl(nm, ctx, ...) \
     pa_activity_ctx(nm, ctx); \
@@ -576,10 +570,12 @@ using pa_val_sig = proto_activities::ValSignal<T>;
 /* Trigger */
 
 #define pa_init(nm) _pa_reset(&_pa_inst_name(nm));
-#define pa_tick(nm, ...) nm(&_pa_inst_name(nm), ##__VA_ARGS__)
-#define pa_tick_tm(tm, nm, ...) (pa_current_time_ms = tm, nm(&_pa_inst_name(nm), ##__VA_ARGS__))
-#define pa_tick_local _pa_call
-#define pa_tick_local_as _pa_call_as
+#define pa_tick_tm(tm, nm, ...) nm(&_pa_inst_name(nm), tm, ##__VA_ARGS__)
+#ifndef ARDUINO
+#define pa_tick(nm, ...) pa_tick_tm(0, nm, ##__VA_ARGS__)
+#else
+#define pa_tick(nm, ...) pa_tick_tm(millis(), nm, ##__VA_ARGS__)
+#endif
 
 /* Convenience */
 

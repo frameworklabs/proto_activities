@@ -7,9 +7,14 @@
 #include <iostream>
 #include <assert.h>
 
+// Defines
+
+#define set_current_time_ms(ms) current_time_ms = local_current_time_ms = ms;
+
+
 // Gobals
 
-__thread pa_time_t pa_current_time_ms;
+pa_time_t current_time_ms;
 
 // Helpers
 
@@ -89,7 +94,7 @@ pa_activity (TestAwait, pa_ctx(pa_co_res(4); int value; int actual; int expected
 
 // Delay Tests
 
-pa_activity (TestDelaySpec, pa_ctx(), int& value, int& expected) {
+pa_activity (TestDelaySpec, pa_ctx(), int& value, int& expected, pa_time_t& local_current_time_ms) {
     expected = 1;
     pa_pause;
     expected = 2;
@@ -100,25 +105,25 @@ pa_activity (TestDelaySpec, pa_ctx(), int& value, int& expected) {
     expected = 5;
     pa_pause;
 
-    pa_current_time_ms = 0;
+    set_current_time_ms(0);
     expected = 6;
     pa_pause;
-    pa_current_time_ms = 9;
+    set_current_time_ms(9);
     pa_pause;
-    pa_current_time_ms = 10;
+    set_current_time_ms(10);
     expected = 7;
     pa_pause;
-    pa_current_time_ms = 11;
+    set_current_time_ms(11);
     expected = 9;
     pa_pause;
 
     expected = 10;
-    pa_current_time_ms = -3;
+    set_current_time_ms(-3);
     pa_pause;
-    pa_current_time_ms = 0;
+    set_current_time_ms(0);
     pa_pause;
     expected = 11;
-    pa_current_time_ms = 2;
+    set_current_time_ms(2);
     pa_pause;
 } pa_end;
 
@@ -161,7 +166,7 @@ pa_activity (TestDelayCheck, pa_ctx(), int actual, int expected) {
 pa_activity (TestDelay, pa_ctx(pa_co_res(4); int value; int actual; int expected;
                                pa_use(TestDelaySpec); pa_use(TestDelayTest); pa_use(TestDelayCheck))) {
     pa_co(3) {
-        pa_with_weak (TestDelaySpec, pa_self.value, pa_self.expected);
+        pa_with_weak (TestDelaySpec, pa_self.value, pa_self.expected, pa_current_time_ms);
         pa_with (TestDelayTest, pa_self.value, pa_self.actual);
         pa_with_weak (TestDelayCheck, pa_self.actual, pa_self.expected);
     } pa_co_end;
@@ -295,7 +300,7 @@ pa_activity (TestCo, pa_ctx(pa_co_res(4); int value; int actual; int expected;
 
 // When-Abort Tests
 
-pa_activity (TestWhenAbortSpec, pa_ctx(), int& value, int& expected) {
+pa_activity (TestWhenAbortSpec, pa_ctx(), int& value, int& expected, pa_time_t& local_current_time_ms) {
 
     // Test that preemption happens only when conditiopn is true.
     expected = 0;
@@ -357,13 +362,13 @@ pa_activity (TestWhenAbortSpec, pa_ctx(), int& value, int& expected) {
     pa_pause;
 
     // Test after ms abort.
-    pa_current_time_ms = 0;
+    set_current_time_ms(0);
     expected = 0;
     pa_pause;
-    pa_current_time_ms = 9;
+    set_current_time_ms(9);
     expected = 1;
     pa_pause;
-    pa_current_time_ms = 10;
+    set_current_time_ms(10);
     expected = -2;
     pa_pause;
 
@@ -442,7 +447,7 @@ pa_activity (TestWhenAbortCheck, pa_ctx(), int actual, int expected) {
 pa_activity (TestWhenAbort, pa_ctx(pa_co_res(4); int value; int actual; int expected;
                                    pa_use(TestWhenAbortSpec); pa_use(TestWhenAbortTest); pa_use(TestWhenAbortCheck))) {
     pa_co(3) {
-        pa_with_weak (TestWhenAbortSpec, pa_self.value, pa_self.expected);
+        pa_with_weak (TestWhenAbortSpec, pa_self.value, pa_self.expected, pa_current_time_ms);
         pa_with (TestWhenAbortTest, pa_self.value, pa_self.actual);
         pa_with_weak (TestWhenAbortCheck, pa_self.actual, pa_self.expected);
     } pa_co_end;
@@ -511,7 +516,7 @@ pa_activity (TestWhenReset, pa_ctx(pa_co_res(4); int value; int actual; int expe
 
 // Every Tests
 
-pa_activity (TestEverySpec, pa_ctx(), int& value, int& expected) {
+pa_activity (TestEverySpec, pa_ctx(), int& value, int& expected, pa_time_t& local_current_time_ms) {
     
     // Test that we don't enter every on false condition.
     value = 0;
@@ -546,19 +551,19 @@ pa_activity (TestEverySpec, pa_ctx(), int& value, int& expected) {
     pa_pause;
     
     // Test every_ms
-    pa_current_time_ms = 0;
+    set_current_time_ms(0);
     value = 0;
     expected = 1;
     pa_pause;
     
-    pa_current_time_ms = 1;
+    set_current_time_ms(1);
     pa_pause;
     
-    pa_current_time_ms = 5;
+    set_current_time_ms(5);
     expected = 2;
     pa_pause;
 
-    pa_current_time_ms = 9;
+    set_current_time_ms(9);
     pa_pause;
 
     value = 1;
@@ -634,7 +639,7 @@ pa_activity (TestEveryCheck, pa_ctx(), int actual, int expected) {
 pa_activity (TestEvery, pa_ctx(pa_co_res(4); int value; int actual; int expected;
                                pa_use(TestEverySpec); pa_use(TestEveryTest); pa_use(TestEveryCheck))) {
     pa_co(3) {
-        pa_with (TestEverySpec, pa_self.value, pa_self.expected);
+        pa_with (TestEverySpec, pa_self.value, pa_self.expected, pa_current_time_ms);
         pa_with_weak (TestEveryTest, pa_self.value, pa_self.actual);
         pa_with_weak (TestEveryCheck, pa_self.actual, pa_self.expected);
     } pa_co_end;
