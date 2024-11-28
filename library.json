@@ -1,5 +1,13 @@
 {
   "name": "proto_activities",
+  "version": "0.1.0",
+  "description": "imperative synchronous programming in C for embedded systems",
+  "keywords": "protothreads",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/frameworklabs/proto_activities"
+  },
+  "license": "MIT",
   "build": {
     "srcDir": ".",
     "srcFilter": "-<*>"
