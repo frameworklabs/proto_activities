@@ -14,7 +14,7 @@
 
 // Gobals
 
-pa_time_t current_time_ms;
+pa_time_t current_time_ms{};
 
 // Helpers
 
@@ -893,8 +893,7 @@ pa_activity (TestValSignals, pa_ctx_tm(pa_use(TestValSignalsBody))) {
 
 #define run_test(ns, nm) \
     pa_use_ns(ns, nm); \
-    pa_init(nm); \
-    while (pa_tick(nm) == PA_RC_WAIT) {}
+    while (pa_tick_tm(current_time_ms, nm) == PA_RC_WAIT) {}
 
 int main(int argc, char* argv[]) {
     std::cout << "Start" << std::endl;
