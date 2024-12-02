@@ -52,14 +52,14 @@ typedef uint32_t pa_time_t;
 #define _pa_static
 #define _pa_extern
 #define _pa_has_field_definer(field) \
-    namespace proto_activities { \
+    namespace proto_activities { namespace internal { \
         template< class... > using void_t = void; \
         template <typename T, typename = void> \
         struct has_field_##field : std::false_type {}; \
         template <typename T> \
         struct has_field_##field<T, void_t<decltype(std::declval<T>().field)>> : std::true_type {}; \
-    }
-#define _pa_has_field(ty, field) proto_activities::has_field_##field<ty>::value
+    } }
+#define _pa_has_field(ty, field) proto_activities::internal::has_field_##field<ty>::value
 #endif
 
 /* Context */
@@ -90,15 +90,15 @@ typedef uint32_t pa_time_t;
         __VA_ARGS__; \
     };
 #else
-namespace proto_activities {
+namespace proto_activities { namespace internal {
     struct AnyFrame {
         virtual ~AnyFrame() = default;
         virtual void reset() = 0;
         pa_pc_t _pa_pc{};
     };
-}
+} }
 #define pa_activity_ctx(nm, ...) \
-    struct _pa_frame_name(nm) final : proto_activities::AnyFrame { \
+    struct _pa_frame_name(nm) final : proto_activities::internal::AnyFrame { \
         void reset() final { \
             *this = _pa_frame_name(nm){}; \
         } \
@@ -215,7 +215,7 @@ namespace proto_activities {
 #else
 
 #define _pa_co_def(n) \
-    proto_activities::AnyFrame* _pa_co[n];
+    proto_activities::internal::AnyFrame* _pa_co[n];
 
 #define _pa_co_clr(i) _pa_co[i] = nullptr;
 
@@ -366,7 +366,7 @@ namespace proto_activities {
 
 #else
 
-namespace proto_activities {
+namespace proto_activities { namespace internal {
     using Thunk = std::function<void()>;
 
     struct Defer {
@@ -441,13 +441,13 @@ namespace proto_activities {
         Thunk thunk;
         Updatable* head{};
     };
-}
+} }
 
-#define pa_defer_res proto_activities::Defer _pa_defer{};
+#define pa_defer_res proto_activities::internal::Defer _pa_defer{};
 #define pa_defer pa_self._pa_defer.thunk = [=]()
 
 _pa_has_field_definer(_pa_susres);
-namespace proto_activities {
+namespace proto_activities { namespace internal {
     template <typename T>
     auto invoke_suspend(T* frame) -> typename std::enable_if<_pa_has_field(T, _pa_susres)>::type {
         frame->_pa_susres.suspend();
@@ -460,37 +460,37 @@ namespace proto_activities {
     }
     template <typename T>
     auto invoke_resume(T* frame) -> typename std::enable_if<!_pa_has_field(T, _pa_susres)>::type {}
-}
+} }
 #if __cplusplus >= 201703L
 #define _pa_susres_suspend(ty, alias) \
-    if constexpr (_pa_has_field(ty, _pa_susres)) { proto_activities::invoke_suspend<ty>(_pa_inst_ptr(alias)); }
+    if constexpr (_pa_has_field(ty, _pa_susres)) { proto_activities::internal::invoke_suspend<ty>(_pa_inst_ptr(alias)); }
 #define _pa_susres_resume(ty, alias) \
-    if constexpr (_pa_has_field(ty, _pa_susres)) { proto_activities::invoke_resume<ty>(_pa_inst_ptr(alias)); }
+    if constexpr (_pa_has_field(ty, _pa_susres)) { proto_activities::internal::invoke_resume<ty>(_pa_inst_ptr(alias)); }
 #else
-#define _pa_susres_suspend(ty, alias) proto_activities::invoke_suspend<ty>(_pa_inst_ptr(alias));
-#define _pa_susres_resume(ty, alias) proto_activities::invoke_resume<ty>(_pa_inst_ptr(alias));
+#define _pa_susres_suspend(ty, alias) proto_activities::internal::invoke_suspend<ty>(_pa_inst_ptr(alias));
+#define _pa_susres_resume(ty, alias) proto_activities::internal::invoke_resume<ty>(_pa_inst_ptr(alias));
 #endif
 
-#define pa_susres_res proto_activities::SusRes _pa_susres{};
+#define pa_susres_res proto_activities::internal::SusRes _pa_susres{};
 #define pa_suspend pa_self._pa_susres.sus_thunk = [&]()
 #define pa_resume pa_self._pa_susres.res_thunk = [&]()
 
 _pa_has_field_definer(_pa_enter);
-namespace proto_activities {
+namespace proto_activities { namespace internal {
     template <typename T>
     auto invoke_enter(T& frame) -> typename std::enable_if<_pa_has_field(T, _pa_enter)>::type {
         frame._pa_enter.invoke();
     }
     template <typename T>
     auto invoke_enter(T& frame) -> typename std::enable_if<!_pa_has_field(T, _pa_enter)>::type {}
-}
+} }
 #if __cplusplus >= 201703L
-#define _pa_enter_invoke(ty) if constexpr (_pa_has_field(ty, _pa_enter)) { proto_activities::invoke_enter<ty>(pa_self); }
+#define _pa_enter_invoke(ty) if constexpr (_pa_has_field(ty, _pa_enter)) { proto_activities::internal::invoke_enter<ty>(pa_self); }
 #else
-#define _pa_enter_invoke(ty) proto_activities::invoke_enter<ty>(pa_self);
+#define _pa_enter_invoke(ty) proto_activities::internal::invoke_enter<ty>(pa_self);
 #endif
 
-#define pa_enter_res proto_activities::Enter _pa_enter{};
+#define pa_enter_res proto_activities::internal::Enter _pa_enter{};
 #define pa_enter pa_self._pa_enter = [&]()
 
 #endif
@@ -500,8 +500,8 @@ namespace proto_activities {
 #ifdef _PA_ENABLE_CPP
 
 namespace proto_activities {
-    struct Signal final : Updatable {
-        Signal(Enter& enter) {
+    struct Signal final : internal::Updatable {
+        Signal(internal::Enter& enter) {
             enter.add(this);
         }
         Signal(const Signal&) = delete;
@@ -523,8 +523,8 @@ namespace proto_activities {
     };
 
     template <typename T>
-    struct ValSignal final : Updatable {
-        ValSignal(Enter& enter) {
+    struct ValSignal final : internal::Updatable {
+        ValSignal(internal::Enter& enter) {
             enter.add(this);
         }
         ValSignal(const ValSignal&) = delete;
