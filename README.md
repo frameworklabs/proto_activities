@@ -61,6 +61,20 @@ pa_activity (Main, pa_ctx_tm(pa_co_res(3); pa_use(Delay); pa_use(FastBlinker); p
 
 In this example, a fast led is blinked for 3 ticks and then both the fast and a slow led are blinked concurrently for 10 ticks.
 
+To trigger the Main activity you need to declare its usage and then tick it until done - either at a specific frequency - or in a free-running style - by repeatedly calling `pa_tick`:
+
+```
+int main(int argc, char* argv[]) {
+    pa_use(Main);
+
+    while (pa_tick(Main) == PA_RC_WAIT) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20)); // Will result in a 50Hz tick frequency.
+    }
+
+    return 0;
+}
+```
+
 ## Constructs
 
 As can be seen in the example above, an activity is defined by the `pa_activity` macro which takes the
@@ -103,9 +117,13 @@ For a detailed description of the statements, please currently refer to the [Ble
 When compiling wit C++ you could also define the following lifecycle callbacks:
 
 * `pa_defer`: defines an instantaneous block of code to run when the activity ends by itself or gets aborted. Add `pa_defer_res` annotation to the context to enable this feature.
+* `pa_enter`: defines an instantaneous block of code to run whenever the activity is entered - and initially when defined. Add `pa_enter_res` annotation to the context to enable this feature.
 * `pa_suspend`: defines an instantaneous block of code to run when an activity gets suspended by the surrounding `pa_when_suspend`. Add `pa_susres_res` annotation to the context to enable this feature.
 * `pa_resume`: defines an instantaneous block of code to run when an activity gets resumed by the surrounding `pa_when_suspend`. Add `pa_susres_res` annotation to the context to enable this feature.
  
+In C++ you can also use signals. Signals can be emitted and checked for presence within a tick. The presence is automatically retreated at the begining of the next tick.
+Define a signal in a `pa_ctx` with either `pa_def_signal(sig)` or `pa_def_val_signal(T, sig)`. The latter can be used to define signals carrying a value in addition to the presence flag. You also need to annotatate the activity defining signals with either `pa_signal_res` or `pa_enter_res`.
+Emit a signal with either `pa_emit(sig)` for pure signals or `pa_emit_val(sig, val)` for valued signals and check for presence by `operator bool`. Extract the value of a valued signal by `sig.val()`. Note that the value will stay in the next ticks even if not emitted again. This can e.g. be used to model flow values which inform about their update by the presence flag.
 
 ## Related projects
 
