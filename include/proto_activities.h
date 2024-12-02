@@ -20,9 +20,6 @@
 #ifdef _PA_ENABLE_CPP
 #include <functional> /* for std::function */
 #include <type_traits> /* for std::true_type, std::void_t, std::enable_if etc. */
-#if __cplusplus >= 201703L
-#include <optional>
-#endif
 #endif
 
 /* Types */
@@ -509,22 +506,22 @@ namespace proto_activities {
         }
         Signal(const Signal&) = delete;
         Signal& operator=(const Signal&) {
-            value_ = false;
+            is_present_ = false;
             return *this;
         }
         void emit() {
-            value_ = true;
+            is_present_ = true;
         }
         operator bool() const {
-            return value_;
+            return is_present_;
         }
         void update() final {
-            value_ = false;
+            is_present_ = false;
         }
     private:
-        bool value_;
+        bool is_present_{};
     };
-#if __cplusplus >= 201703L
+
     template <typename T>
     struct ValSignal final : Updatable {
         ValSignal(Enter& enter) {
@@ -532,38 +529,44 @@ namespace proto_activities {
         }
         ValSignal(const ValSignal&) = delete;
         ValSignal& operator=(const ValSignal&) {
-            value_.reset();
+            is_present_ = false;
+            has_emitted_val_ = false;
+            value_ = {};
             return *this;
         }
-        void emit(T&& t) {
-            value_.emplace(std::move(t));
+        void emit(T&& val) {
+            is_present_ = true;
+            has_emitted_val_ = true;
+            value_ = std::move(val);
         }
         operator bool() const {
-            return value_.has_value();
+            return is_present_;
+        }
+        bool has_emitted_val() const {
+            return has_emitted_val_;
         }
         const T& val() const {
-            return *value_;
+            return value_;
         }
         void update() final {
-            value_.reset();
+            is_present_ = false;
         }
     private:
-        std::optional<T> value_;
+        bool is_present_{};
+        bool has_emitted_val_{};
+        T value_{};
     };
-#endif
 }
 
-using pa_sig = proto_activities::Signal;
-#define pa_sig_res pa_enter_res
-#define pa_def_sig(nm) pa_sig nm{_pa_enter};
+using pa_signal = proto_activities::Signal;
+#define pa_signal_res pa_enter_res
+#define pa_def_signal(sig) pa_signal sig{_pa_enter};
 #define pa_emit(sig) sig.emit();
 
-#if __cplusplus >= 201703L
 template <typename T>
-using pa_val_sig = proto_activities::ValSignal<T>;
-#define pa_def_val_sig(ty, nm) pa_val_sig<ty> nm{_pa_enter};
+using pa_val_signal = proto_activities::ValSignal<T>;
+#define pa_def_val_signal(ty, sig) pa_val_signal<ty> sig{_pa_enter};
 #define pa_emit_val(sig, val) sig.emit(val);
-#endif
 
 #endif
 
